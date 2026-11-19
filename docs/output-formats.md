@@ -17,6 +17,7 @@ python src/extract_illustrations.py INPUT OUTPUT --output-format both
 - `--output-format`: `tiff-alpha` (predeterminado), `tiff-layer-mask`, `both`.
 - Sin `--output-format`, **comportamiento anterior sin cambios**.
 - `--recursivo`, `--magick` y los parámetros de máscara se mantienen comunes.
+- `--export-mask`: genera además la máscara PNG auxiliar, desactivada por defecto.
 - Una única lectura, composición y segmentación de la imagen por entrada, reutilizando la máscara para cada salida seleccionada.
 - El modo editable requiere instalar `requirements-layered.txt` en el entorno virtual. La ausencia de `psdtags` provoca error explícito, no una falsa salida editable.
 
@@ -30,7 +31,7 @@ Para `10.psd`:
 | `tiff-layer-mask` | `10_editable.tif` |
 | `both` | `10.tif` y `10_editable.tif` |
 
-La exportación auxiliar `10_mascara.png` sigue existiendo **en la implementación actual**, como recurso de diagnóstico; su futura opcionalidad se decidirá aparte. No es parte de la máscara incrustada.
+La exportación auxiliar `10_mascara.png` es **opcional** mediante `--export-mask` y está desactivada por defecto. Es una copia de diagnóstico, no parte de la máscara incrustada.
 
 Cuando colisionen nombres como `23.psd` y `23.jpg`, conservar la convención `23_psd.*` / `23_jpg.*` antes de añadir el sufijo `_editable`. No sobrescribir archivos existentes, ni dejar un TIFF incompleto en caso de fallo.
 
