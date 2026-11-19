@@ -72,3 +72,7 @@ Admite JPG, JPEG y PSD; convierte CMYK con ICC incorporado a sRGB y guarda un PN
 En Ubuntu con ImageMagick 6, el comando predeterminado es `convert`; en sistemas que solo proporcionan ImageMagick 7 usar `--magick magick`.
 
 **Nota de migración:** si procesaste archivos con la versión anterior, retira los PNG de salida antiguos antes de repetir: el script omite archivos de salida existentes.
+
+## Prueba de TIFF CMYK con alfa en Scribus
+
+Antes de adoptar TIFF CMYK+A como salida principal, ver [protocolo y generador de prueba](tests/README.md). Esta validación sigue pendiente en la instalación de Scribus; el extractor actual continúa produciendo PNG RGB+A.
