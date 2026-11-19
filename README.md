@@ -50,7 +50,7 @@ python src/extract_illustrations.py "/ruta/escaneos" "/ruta/salida"
 python src/extract_illustrations.py "/ruta/escaneos" "/ruta/salida" --recursivo
 ```
 
-Admite JPG/JPEG y PSD CMYK de 8 bits con ICC. Exporta TIFF de 8 bits con cinco canales **CMYK + alfa no premultiplicado**, conservando **sin modificar** las cuatro muestras CMYK originales y el perfil ICC incrustado. Conserva dimensiones y, cuando se pueden leer, los ppp del original. Genera también la máscara PNG de 8 bits. Para calcular alfa utiliza una conversión ICC a RGB **solo en memoria**.
+Admite JPG/JPEG y PSD CMYK de 8 bits con ICC. Exporta TIFF de 8 bits con cinco canales **CMYK + alfa no premultiplicado**, conservando **sin modificar** las cuatro muestras CMYK originales y el perfil ICC incrustado. Conserva dimensiones y, cuando se pueden leer, los ppp del original. La máscara PNG auxiliar solo se genera si se solicita con `--export-mask`. Para calcular alfa utiliza una conversión ICC a RGB **solo en memoria**.
 
 El programa no sobrescribe archivos TIFF existentes. En caso de archivos homónimos como `23.psd` y `23.jpg`, genera `23_psd.tif` y `23_jpg.tif`. Con `--recursivo`, conserva las subcarpetas. Los errores quedan en `errores_procesamiento.txt`.
 
@@ -75,7 +75,15 @@ Para mantener exclusivamente la salida convencional, basta con `requirements.txt
 
 **Importante:** el modo editable escribe tanto los datos TIFF compuestos como un bloque `ImageSourceData` (37724) con una capa que contiene los cuatro canales CMYK y una máscara de usuario independiente (`USER_LAYER_MASK`, -2). La imagen original se almacena completa. Se comprueba la integridad del TIFF y de su información de capas/máscara al guardarlo, pero **todavía no se ha demostrado que Krita o GIMP importen ese canal como máscara de capa editable**. Si el editor no lo reconoce, el archivo puede abrirse como TIFF aplanado con alfa.
 
-El programa crea todavía el PNG auxiliar de la máscara. Para las decisiones de formato y los criterios de aceptación, consulta [docs/output-formats.md](docs/output-formats.md).
+El PNG auxiliar de máscara es opcional: utilizar `--export-mask` cuando se necesite para diagnóstico. Para las decisiones de formato y los criterios de aceptación, consulta [docs/output-formats.md](docs/output-formats.md).
+
+Ejemplo de exportación opcional de la máscara para inspección:
+
+```bash
+.venv/bin/python src/extract_illustrations.py ../pruebas ../resultados --output-format tiff-alpha --export-mask
+```
+
+Los TIFF existentes se omiten; para regenerar con la máscara auxiliar utiliza otra carpeta de salida.
 
 ## Limitaciones actuales
 
