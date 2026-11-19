@@ -82,3 +82,7 @@ Cuando colisionen nombres como `23.psd` y `23.jpg`, conservar la convención `23
 - `requirements-layered.txt`: dependencias Python opcionales dentro del venv; no requiere Photoshop.
 - `tests/test_layered_tiff.py`: comprobación de escritura y relectura estructural (ejecución pendiente en entorno con psdtags e imagecodecs).
 - **Bloqueante para declarar éxito:** abrir `*_editable.tif` en Krita, verificar que aparece una verdadera máscara de capa, desactivarla y recuperar el papel original. La verificación estructural en Python no demuestra compatibilidad de un editor.
+
+## Corrección de polaridad CMYK (19 noviembre 2026)
+
+La primera apertura del TIFF editable en Krita confirmó que la **máscara de capa sí funciona**, pero mostró colores invertidos y fondo negro. Se ha corregido la polaridad de los canales CMYK **solo dentro de la estructura de capa estilo PSD**: se guardan como `255 - canal_CMYK_TIFF`, para que el importador PSD los interprete correctamente. Los cuatro canales del TIFF convencional y el ICC permanecen intactos. La prueba de lectura verifica el retorno a los valores originales al desinvertirlos. **Pendiente de confirmación visual con un TIFF recién generado en Krita**; no sobrescribir automáticamente archivos previos.
