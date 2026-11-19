@@ -54,6 +54,14 @@ Admite JPG/JPEG y PSD CMYK de 8 bits con ICC. Exporta TIFF de 8 bits con cinco c
 
 El programa no sobrescribe archivos TIFF existentes. En caso de archivos homónimos como `23.psd` y `23.jpg`, genera `23_psd.tif` y `23_jpg.tif`. Con `--recursivo`, conserva las subcarpetas. Los errores quedan en `errores_procesamiento.txt`.
 
+## Formatos de salida: actual y previstos
+
+**Actualmente** el comando genera `10.tif` (CMYK original + alfa no premultiplicado) y `10_mascara.png` (máscara auxiliar). La opción `--output-format` **todavía no existe en el script**.
+
+Se ha definido una interfaz futura con `--output-format tiff-alpha|tiff-layer-mask|both`. El modo por defecto seguirá siendo `tiff-alpha`. El modo `tiff-layer-mask` pretende generar **un solo TIFF editable con la máscara de capa integrada**, que permita desactivarla y recuperar íntegro el escaneo original con su papel. Su viabilidad depende de validar la lectura y escritura de las estructuras de capas y máscaras en el editor de destino.
+
+Consulta la [especificación de formatos de salida](docs/output-formats.md) para nombres, garantías y criterios de aceptación. **No uses todavía los ejemplos de la nueva opción en la CLI actual.**
+
 ## Limitaciones actuales
 
 - **No procesa RGB** (por ejemplo `23.jpg` si es sRGB): lo registra como error hasta que se diseñe una salida que preserve RGB y su ICC.
