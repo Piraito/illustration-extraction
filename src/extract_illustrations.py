@@ -2,15 +2,15 @@
 """Extracción experimental de ilustraciones escaneadas por lotes.
 
 Lee JPG/JPEG y PSD (composición visible PSD[0] de ImageMagick), sin cambiar
-las dimensiones. Exporta PNG RGBA de 16 bits/canal y máscaras de 16 bits.
+las dimensiones. Exporta PNG RGBA de 8 bits/canal y máscaras de 8 bits.
 
 IMPORTANTE: el algoritmo está calibrado inicialmente para una acuarela con
 papel claro y aguadas rosas. El RGB se corrige cerca de los bordes
 semitransparentes: NO se ha decidido aún el modo de conservación de RGB.
-Los PSD HDR fuera del rango 0..1 se rechazan para evitar recortes silenciosos.
-No sustituye una gestión de color ICC completa.
+Las imágenes CMYK se convierten a sRGB mediante su perfil ICC incrustado.
+El soporte de PSD flotantes/HDR queda pendiente de una implementación aparte.
 
-Dependencias: numpy, scipy, opencv-python, pillow, tifffile, ImageMagick 7.
+Dependencias: numpy, scipy, opencv-python, Pillow, ImageMagick 6/7.
 """
 import argparse
 import subprocess
@@ -19,40 +19,45 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import tifffile
-from PIL import Image, ImageOps
+from io import BytesIO
+from collections import Counter
+from PIL import Image, ImageOps, ImageCms
 from scipy.ndimage import gaussian_filter
 
 EXTS = {'.jpg', '.jpeg', '.psd'}
 
 
+def convertir_a_rgb(im: Image.Image) -> np.ndarray:
+    """Convierte el compuesto al espacio sRGB usando ICC, sin conversiones CMYK ingenuas."""
+    perfil = im.info.get('icc_profile')
+    if im.mode in ('CMYK', 'RGB') and perfil:
+        origen = ImageCms.ImageCmsProfile(BytesIO(perfil))
+        destino = ImageCms.createProfile('sRGB')
+        rgb = ImageCms.profileToProfile(im, origen, destino, outputMode='RGB')
+    elif im.mode == 'CMYK':
+        raise RuntimeError('CMYK sin perfil ICC: conversión a RGB no segura')
+    elif im.mode in ('RGB', 'RGBA'):
+        rgb = im.convert('RGB')  # RGB sin ICC: se asume sRGB
+    else:
+        raise RuntimeError(f'Modo de imagen no soportado: {im.mode}')
+    return np.asarray(rgb, dtype=np.float32) / 255.0
+
+
 def leer(path: Path, magick: str) -> np.ndarray:
     if path.suffix.lower() != '.psd':
         with Image.open(path) as im:
-            rgb = np.asarray(ImageOps.exif_transpose(im).convert('RGB')).astype(np.float32) / 255.0
-        return rgb
+            return convertir_a_rgb(ImageOps.exif_transpose(im))
 
-    # PSD[0] es la imagen compuesta guardada por Photoshop.
-    # La fidelidad depende de cómo se guardó el PSD.
+    # Extrae el compuesto guardado por Photoshop, conservando el ICC.
+    # ImageMagick Q16 sirve para PSD CMYK de 8 bits, pero no valida HDR.
     with tempfile.TemporaryDirectory(prefix='illustration_') as td:
         dest = Path(td) / 'compuesto.tif'
-        cmd = [magick, f'{path}[0]', '-define', 'quantum:format=floating-point',
-               '-depth', '32', str(dest)]
+        cmd = [magick, f'{path}[0]', '-depth', '8', '-compress', 'none', str(dest)]
         p = subprocess.run(cmd, capture_output=True, text=True)
         if p.returncode or not dest.exists():
-            raise RuntimeError('No se pudo leer la composición PSD. ' + p.stderr.strip()[-1200:])
-        arr = tifffile.imread(dest).astype(np.float32)
-    if arr.ndim != 3 or arr.shape[2] not in (3, 4):
-        raise RuntimeError(f'PSD compuesto no RGB/RGBA: forma {arr.shape}')
-    if not np.isfinite(arr).all():
-        raise RuntimeError('PSD contiene valores no finitos (NaN/Inf)')
-    low, high = float(arr.min()), float(arr.max())
-    if low < -0.00001 or high > 1.00001:
-        raise RuntimeError(f'PSD HDR/fuera de rango [{low:.4g}, {high:.4g}]: requiere conversión de color/tono explícita')
-    arr = np.clip(arr, 0, 1)
-    if arr.shape[2] == 4:
-        arr = arr[:, :, :3] * arr[:, :, 3:4] + (1 - arr[:, :, 3:4])
-    return arr
+            raise RuntimeError('Error al leer PSD: ' + p.stderr.strip()[-1200:])
+        with Image.open(dest) as im:
+            return convertir_a_rgb(im)
 
 
 def extraer(rgb: np.ndarray, sigma_papel=100, umbral=5.5, anchura=19,
@@ -98,10 +103,10 @@ def extraer(rgb: np.ndarray, sigma_papel=100, umbral=5.5, anchura=19,
     return fg.astype(np.float32), alpha.astype(np.float32)
 
 
-def guardar_png16(path, rgb, alpha):
+def guardar_png8(path, rgb, alpha):
     rgba = np.dstack([rgb, alpha])
-    u16 = np.rint(np.clip(rgba, 0, 1)*65535).astype(np.uint16)
-    if not cv2.imwrite(str(path), u16[:, :, [2, 1, 0, 3]]):
+    u8 = np.rint(np.clip(rgba, 0, 1)*255).astype(np.uint8)
+    if not cv2.imwrite(str(path), u8[:, :, [2, 1, 0, 3]]):
         raise RuntimeError(f'Error escribiendo {path}')
 
 
@@ -109,7 +114,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('entrada', type=Path)
     ap.add_argument('salida', type=Path)
-    ap.add_argument('--magick', default='magick', help='Ejecutable ImageMagick 7')
+    ap.add_argument('--magick', default='convert', help='Ejecutable ImageMagick (convert en Ubuntu; magick en IM7)')
     ap.add_argument('--recursivo', action='store_true')
     ap.add_argument('--sigma-papel', type=float, default=100)
     ap.add_argument('--umbral', type=float, default=5.5)
@@ -122,10 +127,15 @@ def main():
     files = sorted(p for p in (args.entrada.rglob('*') if args.recursivo else args.entrada.iterdir())
                    if p.is_file() and p.suffix.lower() in EXTS)
     args.salida.mkdir(parents=True, exist_ok=True)
+    # Si 23.psd y 23.jpg coexisten, no deben generar ambos 23.png.
+    bases = Counter(str(p.relative_to(args.entrada).with_suffix('')).lower() for p in files)
     errores = []
     for i, src in enumerate(files, 1):
         rel = src.relative_to(args.entrada)
-        dest = args.salida / rel.with_suffix('.png')
+        base = rel.with_suffix('')
+        if bases[str(base).lower()] > 1:
+            base = base.with_name(base.name + '_' + src.suffix[1:].lower())
+        dest = args.salida / base.with_suffix('.png')
         dest.parent.mkdir(parents=True, exist_ok=True)
         if dest.exists():
             print(f'[{i}/{len(files)}] OMITIDO (ya existe): {dest}')
@@ -133,9 +143,9 @@ def main():
         try:
             rgb = leer(src, args.magick)
             fg, alpha = extraer(rgb, args.sigma_papel, args.umbral, args.anchura)
-            guardar_png16(dest, fg, alpha)
+            guardar_png8(dest, fg, alpha)
             mpath = dest.with_name(dest.stem + '_mascara.png')
-            cv2.imwrite(str(mpath), np.rint(alpha*65535).astype(np.uint16))
+            cv2.imwrite(str(mpath), np.rint(alpha*255).astype(np.uint8))
             print(f'[{i}/{len(files)}] OK {src.name}: {rgb.shape[1]}x{rgb.shape[0]} -> {dest}')
         except Exception as exc:
             errores.append(f'{src}: {exc}')
