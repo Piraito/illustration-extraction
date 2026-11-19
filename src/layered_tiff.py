@@ -2,6 +2,8 @@
 
 Stores the original CMYK in both the standard TIFF image (with normal alpha)
 and in the Photoshop ImageSourceData layer payload (with a separate USER_LAYER_MASK).
+PSD-style CMYK layer channel samples use inverse polarity relative to TIFF CMYK;
+the conversion is strictly an encoding change, not an image color adjustment.
 This does not require Photoshop. GIMP/Krita recognition depends on importer support.
 """
 from pathlib import Path
@@ -26,7 +28,7 @@ def guardar_tiff_editable(path: Path, cmyk: np.ndarray, alpha: np.ndarray,
             channelid=[PsdChannelId.CHANNEL0, PsdChannelId.CHANNEL1,
                        PsdChannelId.CHANNEL2, PsdChannelId.CHANNEL3][i],
             compression=PsdCompressionType.ZIP,
-            data=np.ascontiguousarray(cmyk[..., i]),
+            data=np.ascontiguousarray(255 - cmyk[..., i]),
         )
         for i in range(4)
     ]
@@ -93,5 +95,5 @@ def guardar_tiff_editable(path: Path, cmyk: np.ndarray, alpha: np.ndarray,
         raise RuntimeError('TIFF editable: máscara de capa no recuperable')
     for i, key in enumerate([PsdChannelId.CHANNEL0, PsdChannelId.CHANNEL1,
                              PsdChannelId.CHANNEL2, PsdChannelId.CHANNEL3]):
-        if key not in channels or not np.array_equal(channels[key], cmyk[..., i]):
+        if key not in channels or not np.array_equal(255 - channels[key], cmyk[..., i]):
             raise RuntimeError(f'TIFF editable: canal de capa {i} alterado')
