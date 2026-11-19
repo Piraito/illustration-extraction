@@ -1,12 +1,12 @@
 # Diseño de formatos de salida
 
-**Estado:** propuesta de interfaz aprobada para desarrollo, **no implementada** salvo el modo actual `tiff-alpha`.
+**Estado:** los tres modos ya tienen una implementación en la CLI. `tiff-layer-mask` y `both` son **experimentales** y requieren validación de interoperabilidad real con Krita.
 
 ## Objetivo
 
 Extraer ilustraciones sin modificar el color de la imagen compuesta original. El cálculo de la máscara puede realizarse en RGB temporal, pero los canales CMYK del original y sus bytes ICC deben pasar intactos al archivo exportado. Las imágenes completas, incluido el papel, deben seguir siendo recuperables cuando se utilice la salida editable.
 
-## CLI prevista
+## CLI disponible
 
 ```bash
 python src/extract_illustrations.py INPUT OUTPUT --output-format tiff-alpha
@@ -18,7 +18,7 @@ python src/extract_illustrations.py INPUT OUTPUT --output-format both
 - Sin `--output-format`, **comportamiento anterior sin cambios**.
 - `--recursivo`, `--magick` y los parámetros de máscara se mantienen comunes.
 - Una única lectura, composición y segmentación de la imagen por entrada, reutilizando la máscara para cada salida seleccionada.
-- Los modos no implementados deberán rechazarse expresamente si se exponen antes de estar disponibles; no generar un archivo distinto bajo su nombre.
+- El modo editable requiere instalar `requirements-layered.txt` en el entorno virtual. La ausencia de `psdtags` provoca error explícito, no una falsa salida editable.
 
 ## Nombres y productos
 
@@ -73,3 +73,11 @@ Cuando colisionen nombres como `23.psd` y `23.jpg`, conservar la convención `23
 - Alternativa de corrección cromática de bordes: decisión aplazada.
 - Desarrollo de plugin GIMP/Krita, también aplazado.
 - Pruebas de interoperabilidad con Scribus como condición previa: **no solicitadas**.
+
+## Implementación experimental (noviembre de 2026)
+
+- `src/layered_tiff.py`: almacena el compuesto TIFF CMYK+A y la etiqueta 37724 con una capa CMYK completa y un canal `USER_LAYER_MASK` (-2), separado del alfa habitual.
+- `--output-format`: implementado con `tiff-alpha`, `tiff-layer-mask` o `both`; default compatible con el script previo.
+- `requirements-layered.txt`: dependencias Python opcionales dentro del venv; no requiere Photoshop.
+- `tests/test_layered_tiff.py`: comprobación de escritura y relectura estructural (ejecución pendiente en entorno con psdtags e imagecodecs).
+- **Bloqueante para declarar éxito:** abrir `*_editable.tif` en Krita, verificar que aparece una verdadera máscara de capa, desactivarla y recuperar el papel original. La verificación estructural en Python no demuestra compatibilidad de un editor.
