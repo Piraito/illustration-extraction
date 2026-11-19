@@ -37,7 +37,7 @@ class LayeredTiffTest(unittest.TestCase):
                 self.assertTrue(np.array_equal(tif.pages[0].tags['InterColorProfile'].value, bytes(icc)))
             layered = TiffImageSourceData.fromtiff(str(path))
             channels = {c.channelid: c.data for c in layered.layers.layers[0].channels}
-            self.assertTrue(np.array_equal(channels[PsdChannelId.CHANNEL3], cmyk[..., 3]))
+            self.assertTrue(np.array_equal(255 - channels[PsdChannelId.CHANNEL3], cmyk[..., 3]))
             self.assertTrue(np.array_equal(
                 channels[PsdChannelId.USER_LAYER_MASK],
                 np.rint(alpha * 255).astype(np.uint8),
