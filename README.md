@@ -50,29 +50,29 @@ python src/extract_illustrations.py "/ruta/escaneos" "/ruta/salida"
 python src/extract_illustrations.py "/ruta/escaneos" "/ruta/salida" --recursivo
 ```
 
-Admite JPG, JPEG y PSD; convierte CMYK con ICC incorporado a sRGB y guarda un PNG RGBA de 8 bits/canal y su máscara en grises (8 bits). Mantiene dimensiones en píxeles y, con `--recursivo`, estructura de subcarpetas. Registra fallos en `errores_procesamiento.txt`. No sobrescribe PNG ya existentes. Si coinciden nombres base con extensiones diferentes (por ejemplo `23.psd` y `23.jpg`), añade `_psd` o `_jpg` al nombre de salida.
+Admite JPG/JPEG y PSD CMYK de 8 bits con ICC. Exporta TIFF de 8 bits con cinco canales **CMYK + alfa no premultiplicado**, conservando **sin modificar** las cuatro muestras CMYK originales y el perfil ICC incrustado. Conserva dimensiones y, cuando se pueden leer, los ppp del original. Genera también la máscara PNG de 8 bits. Para calcular alfa utiliza una conversión ICC a RGB **solo en memoria**.
 
-## Restricciones
+El programa no sobrescribe archivos TIFF existentes. En caso de archivos homónimos como `23.psd` y `23.jpg`, genera `23_psd.tif` y `23_jpg.tif`. Con `--recursivo`, conserva las subcarpetas. Los errores quedan en `errores_procesamiento.txt`.
 
-- La composición visible de los PSD procede de `PSD[0]` de ImageMagick; requiere comprobar su fidelidad con PSD reales que contengan Smart Objects.
-- CMYK con perfil ICC incrustado se convierte a sRGB usando LittleCMS vía Pillow; CMYK sin ICC se rechaza. Los RGB sin ICC se interpretan como sRGB.
-- La colección detectada es CMYK de 8 bits con FOGRA39, salvo un JPG sRGB; el PNG de salida utiliza 8 bits/canal. PSD HDR/32-bit float y perfiles excepcionales no están validados.
-- La versión actual **corrige RGB cerca de bordes**. No implementa todavía el modo alternativo de conservar el RGB sin modificar; la elección está expresamente aplazada.
-- No garantiza conservar aguadas casi indistinguibles del papel ni eliminar todos los halos. Revisar los bordes sobre fondo claro y oscuro.
-- No se incluyen escaneos de ilustraciones en este repositorio.
+## Limitaciones actuales
+
+- **No procesa RGB** (por ejemplo `23.jpg` si es sRGB): lo registra como error hasta que se diseñe una salida que preserve RGB y su ICC.
+- Los PSD se leen mediante la imagen compuesta `PSD[0]` de ImageMagick, pero el perfil ICC se extrae directamente de los recursos del PSD original. La fidelidad de la composición de Smart Objects debe evaluarse sobre tus imágenes.
+- La máscara sigue calibrada para una acuarela concreta y puede perder aguadas muy tenues o crear halos. Los colores CMYK originales no se corrigen en los bordes.
+- El archivo final no incluye cambios cromáticos en el interior ni en los bordes: únicamente añade alfa.
+- No procesa PSD HDR/32 bits flotantes.
+- No se suben ilustraciones originales al repositorio.
+
 
 ## Siguientes pruebas
 
-1. Validar PSD CMYK FOGRA39 real con Smart Objects, perfil ICC y composición de referencia.
+1. Comprobar con archivos reales la composición de PSD y preservación de los cuatro canales CMYK y perfil ICC.
 2. Probar distintas ilustraciones, colores de papel y resoluciones; medir pérdidas de aguadas, halos y alteraciones interiores.
 3. Generalizar la detección de fondo sin suposiciones de pigmento rosa.
-4. Evaluar los dos modos de RGB (original o corregido cerca del borde), **sin decidirlos todavía**.
+4. Mantener pendiente la evaluación de alternativas de corrección del borde, sin modificar el CMYK original en esta versión.
 5. Añadir pruebas automáticas, métricas y opciones de revisión en GIMP/Krita.
 
 En Ubuntu con ImageMagick 6, el comando predeterminado es `convert`; en sistemas que solo proporcionan ImageMagick 7 usar `--magick magick`.
 
-**Nota de migración:** si procesaste archivos con la versión anterior, retira los PNG de salida antiguos antes de repetir: el script omite archivos de salida existentes.
+**Nota de migración:** la salida principal ahora es TIFF, no PNG; utiliza una carpeta de resultados nueva para las pruebas.
 
-## Prueba de TIFF CMYK con alfa en Scribus
-
-Antes de adoptar TIFF CMYK+A como salida principal, ver [protocolo y generador de prueba](tests/README.md). Esta validación sigue pendiente en la instalación de Scribus; el extractor actual continúa produciendo PNG RGB+A.
