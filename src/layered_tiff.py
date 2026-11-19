@@ -15,7 +15,7 @@ def guardar_tiff_editable(path: Path, cmyk: np.ndarray, alpha: np.ndarray,
     from psdtags import (
         PsdBlendMode, PsdChannel, PsdChannelId, PsdClippingType,
         PsdCompressionType, PsdFormat, PsdKey, PsdLayer, PsdLayerFlag,
-        PsdLayerMask, PsdLayers, PsdRectangle, PsdString, TiffImageSourceData,
+        PsdLayerMask, PsdLayers, PsdRectangle, PsdString, PsdUserMask, TiffImageSourceData,
     )
 
     height, width = cmyk.shape[:2]
@@ -54,6 +54,7 @@ def guardar_tiff_editable(path: Path, cmyk: np.ndarray, alpha: np.ndarray,
         psdformat=PsdFormat.LE32BIT,
         layers=PsdLayers(key=PsdKey.LAYER, has_transparency=False,
                          layers=[layer]),
+        usermask=PsdUserMask(),
     )
     options = dict(
         photometric='separated',
