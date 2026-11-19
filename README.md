@@ -54,13 +54,28 @@ Admite JPG/JPEG y PSD CMYK de 8 bits con ICC. Exporta TIFF de 8 bits con cinco c
 
 El programa no sobrescribe archivos TIFF existentes. En caso de archivos homónimos como `23.psd` y `23.jpg`, genera `23_psd.tif` y `23_jpg.tif`. Con `--recursivo`, conserva las subcarpetas. Los errores quedan en `errores_procesamiento.txt`.
 
-## Formatos de salida: actual y previstos
+## Formatos de salida
 
-**Actualmente** el comando genera `10.tif` (CMYK original + alfa no premultiplicado) y `10_mascara.png` (máscara auxiliar). La opción `--output-format` **todavía no existe en el script**.
+`--output-format` permite elegir uno de los tres modos:
 
-Se ha definido una interfaz futura con `--output-format tiff-alpha|tiff-layer-mask|both`. El modo por defecto seguirá siendo `tiff-alpha`. El modo `tiff-layer-mask` pretende generar **un solo TIFF editable con la máscara de capa integrada**, que permita desactivarla y recuperar íntegro el escaneo original con su papel. Su viabilidad depende de validar la lectura y escritura de las estructuras de capas y máscaras en el editor de destino.
+| Modo | Salida | Estado |
+| --- | --- | --- |
+| `tiff-alpha` (predeterminado) | `10.tif` (CMYK + alfa no premultiplicado) | Validado previamente sobre PSD real |
+| `tiff-layer-mask` | `10_editable.tif` (TIFF con datos de capa CMYK y máscara editable estilo Photoshop) | Implementación experimental, pendiente de comprobar en Krita |
+| `both` | Ambos TIFF | Implementación experimental |
 
-Consulta la [especificación de formatos de salida](docs/output-formats.md) para nombres, garantías y criterios de aceptación. **No uses todavía los ejemplos de la nueva opción en la CLI actual.**
+Para disponer del nuevo modo editable en el entorno virtual:
+
+```bash
+.venv/bin/python -m pip install -r requirements-layered.txt
+.venv/bin/python src/extract_illustrations.py ../pruebas ../resultados-editables --output-format both
+```
+
+Para mantener exclusivamente la salida convencional, basta con `requirements.txt` y omitir `--output-format`.
+
+**Importante:** el modo editable escribe tanto los datos TIFF compuestos como un bloque `ImageSourceData` (37724) con una capa que contiene los cuatro canales CMYK y una máscara de usuario independiente (`USER_LAYER_MASK`, -2). La imagen original se almacena completa. Se comprueba la integridad del TIFF y de su información de capas/máscara al guardarlo, pero **todavía no se ha demostrado que Krita o GIMP importen ese canal como máscara de capa editable**. Si el editor no lo reconoce, el archivo puede abrirse como TIFF aplanado con alfa.
+
+El programa crea todavía el PNG auxiliar de la máscara. Para las decisiones de formato y los criterios de aceptación, consulta [docs/output-formats.md](docs/output-formats.md).
 
 ## Limitaciones actuales
 
@@ -78,7 +93,7 @@ Consulta la [especificación de formatos de salida](docs/output-formats.md) para
 2. Probar distintas ilustraciones, colores de papel y resoluciones; medir pérdidas de aguadas, halos y alteraciones interiores.
 3. Generalizar la detección de fondo sin suposiciones de pigmento rosa.
 4. Mantener pendiente la evaluación de alternativas de corrección del borde, sin modificar el CMYK original en esta versión.
-5. Añadir pruebas automáticas, métricas y opciones de revisión en GIMP/Krita.
+5. Ejecutar prueba estructural `python -m unittest discover -s tests -p 'test_layered_tiff.py'` y comprobar visualmente en Krita la máscara editable; añadir métricas y opciones de revisión.
 
 En Ubuntu con ImageMagick 6, el comando predeterminado es `convert`; en sistemas que solo proporcionan ImageMagick 7 usar `--magick magick`.
 
