@@ -164,6 +164,8 @@ def main():
     ap.add_argument('salida', type=Path)
     ap.add_argument('--magick', default='convert', help='Ejecutable ImageMagick (convert en Ubuntu; magick en IM7)')
     ap.add_argument('--recursivo', action='store_true')
+    ap.add_argument('--output-format', choices=('tiff-alpha', 'tiff-layer-mask', 'both'),
+                    default='tiff-alpha', help='Formato(s) TIFF de salida')
     ap.add_argument('--sigma-papel', type=float, default=100)
     ap.add_argument('--umbral', type=float, default=5.5)
     ap.add_argument('--anchura', type=float, default=19)
@@ -184,18 +186,35 @@ def main():
         if bases[str(base).lower()] > 1:
             base = base.with_name(base.name + '_' + src.suffix[1:].lower())
         dest = args.salida / base.with_suffix('.tif')
+        editable = dest.with_name(dest.stem + '_editable.tif')
+        outputs = ([dest] if args.output_format == 'tiff-alpha' else
+                   [editable] if args.output_format == 'tiff-layer-mask' else
+                   [dest, editable])
         dest.parent.mkdir(parents=True, exist_ok=True)
-        if dest.exists():
-            print(f'[{i}/{len(files)}] OMITIDO (ya existe): {dest}')
+        if any(p.exists() for p in outputs):
+            print(f'[{i}/{len(files)}] OMITIDO (ya existe una salida): {src.name}')
             continue
         try:
             cmyk, rgb, icc, dpi = leer(src, args.magick)
             _, alpha = extraer(rgb, args.sigma_papel, args.umbral, args.anchura)
-            guardar_tiff(dest, cmyk, alpha, icc, dpi)
+            created = []
+            try:
+                if dest in outputs:
+                    guardar_tiff(dest, cmyk, alpha, icc, dpi)
+                    created.append(dest)
+                if editable in outputs:
+                    from layered_tiff import guardar_tiff_editable
+                    guardar_tiff_editable(editable, cmyk, alpha, icc, dpi)
+                    created.append(editable)
+            except Exception:
+                for output in outputs:
+                    if output.exists():
+                        output.unlink()
+                raise
             mpath = dest.with_name(dest.stem + '_mascara.png')
             if not cv2.imwrite(str(mpath), np.rint(alpha*255).astype(np.uint8)):
                 raise RuntimeError('No se pudo escribir la máscara PNG')
-            print(f'[{i}/{len(files)}] OK {src.name}: {rgb.shape[1]}x{rgb.shape[0]} -> {dest}')
+            print(f'[{i}/{len(files)}] OK {src.name}: {rgb.shape[1]}x{rgb.shape[0]} -> {", ".join(str(p) for p in outputs)}')
         except Exception as exc:
             errores.append(f'{src}: {exc}')
             print(f'[{i}/{len(files)}] ERROR {src.name}: {exc}')
