@@ -6,13 +6,42 @@ Extracción **experimental** de ilustraciones escaneadas sobre papel claro media
 
 Prototipo basado en una acuarela de prueba. **No es un extractor genérico validado**: los umbrales cromáticos actuales están calibrados para papel claro y aguadas rosadas. Se conservan las dimensiones de los escaneos y no se modifican los originales.
 
-## Instalación
+## Instalación en entorno virtual (macOS y Linux)
 
-Python 3.10+ e ImageMagick 7 (comando `magick`) para leer el compuesto visible de los PSD.
+Requisitos: Python 3.10+ y, para leer PSD, ImageMagick 7 (comando `magick`).
+ImageMagick se instala **en el sistema**, no dentro del entorno virtual Python.
+
+- macOS (Homebrew): `brew install imagemagick`
+- Arch Linux: `sudo pacman -S imagemagick`
+
+Clona el repositorio y crea su entorno aislado:
 
 ```bash
+git clone https://github.com/Piraito/illustration-extraction.git
+cd illustration-extraction
+bash setup.sh
+```
+
+`setup.sh` crea `.venv/`, actualiza pip e instala las dependencias de `requirements.txt`.
+Si se quiere elegir intérprete: `PYTHON=python3.12 bash setup.sh`.
+
+También puede hacerse manualmente:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
+
+Comprobación:
+
+```bash
+.venv/bin/python src/extract_illustrations.py --help
+magick -version
+```
+
+No hace falta activar el entorno si se usa `.venv/bin/python`. Para activarlo: `source .venv/bin/activate`; para salir: `deactivate`. El directorio `.venv/` está excluido de Git.
 
 ## Uso
 
