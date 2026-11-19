@@ -13,8 +13,8 @@ fi
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -r requirements.txt
 
-if ! command -v magick >/dev/null 2>&1; then
-  echo "AVISO: ImageMagick 7 (magick) no está en PATH; los PSD no podrán procesarse."
+if ! command -v convert >/dev/null 2>&1 && ! command -v magick >/dev/null 2>&1; then
+  echo "AVISO: ImageMagick (convert/magick) no está en PATH; los PSD no podrán procesarse."
   echo "macOS: brew install imagemagick | Arch Linux: sudo pacman -S imagemagick"
 fi
 
