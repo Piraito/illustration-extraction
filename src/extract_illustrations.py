@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """Extracción experimental de ilustraciones escaneadas por lotes.
 
-Lee JPG/JPEG y PSD (composición visible PSD[0] de ImageMagick), sin cambiar
-las dimensiones. Exporta PNG RGBA de 8 bits/canal y máscaras de 8 bits.
+Lee JPG/JPEG y PSD CMYK de 8 bits; conserva los cuatro canales CMYK,
+perfil ICC original, dimensiones y resolución. Añade un alfa no premultiplicado
+y exporta TIFF CMYK+A. El RGB temporal solo sirve para calcular la máscara.
 
-IMPORTANTE: el algoritmo está calibrado inicialmente para una acuarela con
-papel claro y aguadas rosas. El RGB se corrige cerca de los bordes
-semitransparentes: NO se ha decidido aún el modo de conservación de RGB.
-Las imágenes CMYK se convierten a sRGB mediante su perfil ICC incrustado.
-El soporte de PSD flotantes/HDR queda pendiente de una implementación aparte.
+Algoritmo EXPERIMENTAL calibrado inicialmente para acuarelas de papel claro.
+PSD: ImageMagick extrae la composición a TIFF; comprobar los Smart Objects.
+No procesa RGB ni HDR en esta etapa: falla explícitamente.
 
-Dependencias: numpy, scipy, opencv-python, Pillow, ImageMagick 6/7.
+Dependencias: numpy, scipy, opencv-python, Pillow, tifffile, ImageMagick 6/7.
 """
 import argparse
 import subprocess
@@ -21,43 +20,74 @@ import cv2
 import numpy as np
 from io import BytesIO
 from collections import Counter
+import struct
+import tifffile
 from PIL import Image, ImageOps, ImageCms
 from scipy.ndimage import gaussian_filter
 
 EXTS = {'.jpg', '.jpeg', '.psd'}
 
 
-def convertir_a_rgb(im: Image.Image) -> np.ndarray:
-    """Convierte el compuesto al espacio sRGB usando ICC, sin conversiones CMYK ingenuas."""
-    perfil = im.info.get('icc_profile')
-    if im.mode in ('CMYK', 'RGB') and perfil:
-        origen = ImageCms.ImageCmsProfile(BytesIO(perfil))
-        destino = ImageCms.createProfile('sRGB')
-        rgb = ImageCms.profileToProfile(im, origen, destino, outputMode='RGB')
-    elif im.mode == 'CMYK':
-        raise RuntimeError('CMYK sin perfil ICC: conversión a RGB no segura')
-    elif im.mode in ('RGB', 'RGBA'):
-        rgb = im.convert('RGB')  # RGB sin ICC: se asume sRGB
-    else:
-        raise RuntimeError(f'Modo de imagen no soportado: {im.mode}')
-    return np.asarray(rgb, dtype=np.float32) / 255.0
+def perfil_psd(path: Path) -> bytes:
+    """Lee ICC (recurso Photoshop 0x040F) directamente del PSD original."""
+    with path.open('rb') as stream:
+        if stream.read(4) != b'8BPS':
+            raise RuntimeError('No es un PSD válido')
+        stream.seek(26)
+        color_length = struct.unpack('>I', stream.read(4))[0]
+        stream.seek(color_length, 1)
+        resources_length = struct.unpack('>I', stream.read(4))[0]
+        end = stream.tell() + resources_length
+        while stream.tell() < end:
+            if stream.read(4) != b'8BIM':
+                raise RuntimeError('Recurso PSD inesperado')
+            resource_id = struct.unpack('>H', stream.read(2))[0]
+            name_length = stream.read(1)[0]
+            stream.seek(name_length + (1 if (name_length + 1) % 2 else 0), 1)
+            size = struct.unpack('>I', stream.read(4))[0]
+            payload = stream.read(size)
+            if size % 2:
+                stream.seek(1, 1)
+            if resource_id == 0x040F:
+                return payload
+    raise RuntimeError('PSD sin perfil ICC incrustado')
 
 
-def leer(path: Path, magick: str) -> np.ndarray:
+def leer(path: Path, magick: str):
+    """Devuelve canales CMYK intactos, perfil ICC original y resolución."""
     if path.suffix.lower() != '.psd':
         with Image.open(path) as im:
-            return convertir_a_rgb(ImageOps.exif_transpose(im))
+            if im.mode != 'CMYK':
+                raise RuntimeError(f'Se requiere CMYK, imagen {im.mode}; soporte RGB pendiente')
+            icc = im.info.get('icc_profile')
+            dpi = im.info.get('dpi')
+            cmyk = np.asarray(im, dtype=np.uint8).copy()
+    else:
+        icc = perfil_psd(path)
+        with tempfile.TemporaryDirectory(prefix='illustration_') as td:
+            dest = Path(td) / 'compuesto.tif'
+            cmd = [magick, f'{path}[0]', '-depth', '8', '-compress', 'none', str(dest)]
+            p = subprocess.run(cmd, capture_output=True, text=True)
+            if p.returncode or not dest.exists():
+                raise RuntimeError('Error al leer PSD: ' + p.stderr.strip()[-1200:])
+            with Image.open(dest) as im:
+                if im.mode != 'CMYK':
+                    raise RuntimeError(f'PSD compuesto no CMYK ({im.mode})')
+                cmyk = np.asarray(im, dtype=np.uint8).copy()
+                dpi = im.info.get('dpi')
 
-    # Extrae el compuesto guardado por Photoshop, conservando el ICC.
-    # ImageMagick Q16 sirve para PSD CMYK de 8 bits, pero no valida HDR.
-    with tempfile.TemporaryDirectory(prefix='illustration_') as td:
-        dest = Path(td) / 'compuesto.tif'
-        cmd = [magick, f'{path}[0]', '-depth', '8', '-compress', 'none', str(dest)]
-        p = subprocess.run(cmd, capture_output=True, text=True)
-        if p.returncode or not dest.exists():
-            raise RuntimeError('Error al leer PSD: ' + p.stderr.strip()[-1200:])
-        with Image.open(dest) as im:
-            return convertir_a_rgb(im)
+    if not icc or len(icc) < 128 or icc[36:40] != b'acsp' or icc[16:20] != b'CMYK':
+        raise RuntimeError('ICC original ausente o no corresponde a CMYK')
+    try:
+        source = ImageCms.ImageCmsProfile(BytesIO(icc))
+        srgb = ImageCms.createProfile('sRGB')
+        rgb_img = ImageCms.profileToProfile(
+            Image.fromarray(cmyk, mode='CMYK'), source, srgb,
+            outputMode='RGB')
+    except Exception as exc:
+        raise RuntimeError(f'No se pudo convertir temporalmente a RGB mediante ICC: {exc}') from exc
+    rgb = np.asarray(rgb_img, dtype=np.float32) / 255.0
+    return cmyk, rgb, icc, dpi
 
 
 def extraer(rgb: np.ndarray, sigma_papel=100, umbral=5.5, anchura=19,
@@ -103,11 +133,29 @@ def extraer(rgb: np.ndarray, sigma_papel=100, umbral=5.5, anchura=19,
     return fg.astype(np.float32), alpha.astype(np.float32)
 
 
-def guardar_png8(path, rgb, alpha):
-    rgba = np.dstack([rgb, alpha])
-    u8 = np.rint(np.clip(rgba, 0, 1)*255).astype(np.uint8)
-    if not cv2.imwrite(str(path), u8[:, :, [2, 1, 0, 3]]):
-        raise RuntimeError(f'Error escribiendo {path}')
+def guardar_tiff(path, cmyk, alpha, icc, dpi):
+    """Escribe cinco canales sin alterar los cuatro CMYK originales."""
+    a = np.rint(np.clip(alpha, 0, 1) * 255).astype(np.uint8)
+    pixels = np.dstack((cmyk, a))
+    options = dict(photometric='separated', planarconfig='contig',
+                   extrasamples=['unassalpha'], iccprofile=icc,
+                   compression='deflate', metadata=None)
+    if dpi and len(dpi) >= 2 and dpi[0] > 0 and dpi[1] > 0:
+        options.update(resolution=(float(dpi[0]), float(dpi[1])),
+                       resolutionunit='inch')
+    tifffile.imwrite(path, pixels, **options)
+    with tifffile.TiffFile(path) as t:
+        page = t.pages[0]
+        check = page.asarray()
+        if (page.samplesperpixel != 5 or
+            list(page.extrasamples) != [tifffile.EXTRASAMPLE.UNASSALPHA] or
+            not np.array_equal(check[:, :, :4], cmyk) or
+            not np.array_equal(check[:, :, 4], a)):
+            raise RuntimeError('No se verificó integridad CMYK y alfa del TIFF')
+        profile = page.tags.get('InterColorProfile')
+        if profile is None or profile.value != icc:
+            raise RuntimeError('El ICC no coincide con el original')
+
 
 
 def main():
@@ -127,7 +175,7 @@ def main():
     files = sorted(p for p in (args.entrada.rglob('*') if args.recursivo else args.entrada.iterdir())
                    if p.is_file() and p.suffix.lower() in EXTS)
     args.salida.mkdir(parents=True, exist_ok=True)
-    # Si 23.psd y 23.jpg coexisten, no deben generar ambos 23.png.
+    # Si 23.psd y 23.jpg coexisten, no deben generar ambos 23.tif.
     bases = Counter(str(p.relative_to(args.entrada).with_suffix('')).lower() for p in files)
     errores = []
     for i, src in enumerate(files, 1):
@@ -135,17 +183,18 @@ def main():
         base = rel.with_suffix('')
         if bases[str(base).lower()] > 1:
             base = base.with_name(base.name + '_' + src.suffix[1:].lower())
-        dest = args.salida / base.with_suffix('.png')
+        dest = args.salida / base.with_suffix('.tif')
         dest.parent.mkdir(parents=True, exist_ok=True)
         if dest.exists():
             print(f'[{i}/{len(files)}] OMITIDO (ya existe): {dest}')
             continue
         try:
-            rgb = leer(src, args.magick)
-            fg, alpha = extraer(rgb, args.sigma_papel, args.umbral, args.anchura)
-            guardar_png8(dest, fg, alpha)
+            cmyk, rgb, icc, dpi = leer(src, args.magick)
+            _, alpha = extraer(rgb, args.sigma_papel, args.umbral, args.anchura)
+            guardar_tiff(dest, cmyk, alpha, icc, dpi)
             mpath = dest.with_name(dest.stem + '_mascara.png')
-            cv2.imwrite(str(mpath), np.rint(alpha*255).astype(np.uint8))
+            if not cv2.imwrite(str(mpath), np.rint(alpha*255).astype(np.uint8)):
+                raise RuntimeError('No se pudo escribir la máscara PNG')
             print(f'[{i}/{len(files)}] OK {src.name}: {rgb.shape[1]}x{rgb.shape[0]} -> {dest}')
         except Exception as exc:
             errores.append(f'{src}: {exc}')
