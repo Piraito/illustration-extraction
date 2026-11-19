@@ -164,6 +164,8 @@ def main():
     ap.add_argument('salida', type=Path)
     ap.add_argument('--magick', default='convert', help='Ejecutable ImageMagick (convert en Ubuntu; magick en IM7)')
     ap.add_argument('--recursivo', action='store_true')
+    ap.add_argument('--export-mask', action='store_true',
+                    help='Exportar además una máscara PNG de diagnóstico (desactivado por defecto)')
     ap.add_argument('--output-format', choices=('tiff-alpha', 'tiff-layer-mask', 'both'),
                     default='tiff-alpha', help='Formato(s) TIFF de salida')
     ap.add_argument('--sigma-papel', type=float, default=100)
@@ -211,9 +213,10 @@ def main():
                     if output.exists():
                         output.unlink()
                 raise
-            mpath = dest.with_name(dest.stem + '_mascara.png')
-            if not cv2.imwrite(str(mpath), np.rint(alpha*255).astype(np.uint8)):
-                raise RuntimeError('No se pudo escribir la máscara PNG')
+            if args.export_mask:
+                mpath = dest.with_name(dest.stem + '_mascara.png')
+                if not cv2.imwrite(str(mpath), np.rint(alpha*255).astype(np.uint8)):
+                    raise RuntimeError('No se pudo escribir la máscara PNG')
             print(f'[{i}/{len(files)}] OK {src.name}: {rgb.shape[1]}x{rgb.shape[0]} -> {", ".join(str(p) for p in outputs)}')
         except Exception as exc:
             errores.append(f'{src}: {exc}')
