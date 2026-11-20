@@ -12,7 +12,7 @@ def adaptive_alpha(rgb, sigma_papel=100, threshold=6.0, transition=12.0):
     """Estimate alpha from paper vs pigment differences; values in [0, 1].
 
     Assumes paper is present near image boundaries. Works for different hues
-    but cannot distinguish very pale pigment from similar paper with certainty.
+    but cannot distinguish very pale pigment from similar paper with certainty.\n    Preserves enclosed pale regions spatially, including paper-colored portions.
     """
     if rgb.ndim != 3 or rgb.shape[2] != 3:
         raise ValueError('Expected HxWx3 RGB')
@@ -72,9 +72,31 @@ def adaptive_alpha(rgb, sigma_papel=100, threshold=6.0, transition=12.0):
             retained[labels == n] = 1
     if count <= 1 or not retained.any():
         raise RuntimeError('No significant pigment detected')
-    # Allow graded edges near retained regions, not across the whole paper.
-    nearby = cv2.dilate(retained, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
-    alpha *= nearby
-    # Strong pigment stays fully visible; do not force pale interior to full alpha.
-    alpha[difference >= onset + transition * 1.3] = 1.0
-    return alpha.astype(np.float32)
+    # Construct an envelope from the *strong* pigment. Close small gaps and
+    # fill enclosed areas: pale/white interiors must not become transparent.
+    # This is intentionally conservative: a little surrounding paper is better
+    # than destroying original artwork. Spatial scale tracks image dimensions.
+    close_diameter = max(9, int(round(min(h, w) * 0.025)) | 1)
+    close_diameter = min(close_diameter, 101)
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE, (close_diameter, close_diameter))
+    joined = cv2.morphologyEx(retained, cv2.MORPH_CLOSE, kernel)
+    contours, _ = cv2.findContours(
+        joined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    envelope = np.zeros_like(joined)
+    cv2.drawContours(envelope, contours, -1, 1, cv2.FILLED)
+    # Protect the original from 2px inside the envelope, with a soft transition
+    # at its outline; do not rely on the color of enclosed pale washes.
+    inner = cv2.distanceTransform(envelope, cv2.DIST_L2, 5)
+    protected = np.clip((inner - 0.5) / 2.0, 0, 1)
+    # On the outside, retain weaker pigment only close to detected artwork;
+    # paper texture elsewhere is not permitted to grow isolated alpha.
+    margin = max(9, min(61, int(round(min(h, w) * 0.018)) | 1))
+    neighborhood = cv2.dilate(
+        envelope, cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (margin, margin)))
+    faint = np.clip((difference - max(1.5, onset * 0.35)) /
+                    max(transition, 1.0), 0, 1)
+    exterior = np.maximum(alpha, faint * 0.85) * neighborhood
+    result = np.maximum(protected, exterior)
+    return np.clip(result, 0, 1).astype(np.float32)
