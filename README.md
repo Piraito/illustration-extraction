@@ -121,6 +121,46 @@ Prueba automática del nuevo algoritmo (sin archivos reales):
 
 **No utilizar `adaptive` en producción** con estos escaneos. Se conserva como experimento separado para evitar perder el historial, pero no está validado. No continuar ajustando simplemente desenfoque, dilatación o umbrales. Próxima investigación: analizar casos reales de aguadas y pigmento frente a papel a escala de píxel (preferiblemente con recortes de originales y sus máscaras) y evaluar un método que respete la estructura fina sin crear halos. Ninguna modificación al proceso de color CMYK, ICC o al TIFF editable validado en Krita.
 
+## Diagnóstico comparativo sin alterar el extractor
+
+Para investigar por qué `legacy` preserva mejor las aguadas, ejecutar **un único PSD original**. La herramienta no crea TIFF ni modifica el PSD; emplea la misma conversión ICC a RGB temporal que el extractor y calcula ambas máscaras.
+
+Desde la raíz del repositorio, con las rutas de la colección Agaden:
+
+```bash
+.venv/bin/python src/diagnose_masks.py \
+  "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO/10.psd" \
+  "../diagnostico-10"
+```
+
+Salidas:
+- `original_srgb.png`: vista del original (conversión desde CMYK con ICC).
+- `legacy_alpha.png` y `adaptive_alpha.png`: máscaras efectivas exactas de ambos algoritmos.
+- `legacy_sobre_damero.png` y `adaptive_sobre_damero.png`: composiciones diagnósticas con los colores RGB originales sin corregir sobre damero.
+- `diferencia_rojo_legacy_azul_adaptive.png`: rojo significa que legacy conserva más alfa; azul que adaptive conserva más.
+- `distancia_lab_papel.png`: contraste cromático respecto al papel del borde, **señal de diagnóstico**, no señal interna ni prueba de que exista pigmento.
+- `informe.json`: dimensiones, referencia Lab del papel y promedios de alfa/color en zonas heurísticas.
+
+Para medir una región elegida manualmente (coordenadas en píxeles del **PSD original**, no de la miniatura), añadir argumentos `--region` repetibles:
+
+```bash
+.venv/bin/python src/diagnose_masks.py \
+  "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO/10.psd" \
+  "../diagnostico-10-regiones" \
+  --region papel:40:40:150:150 \
+  --region aguada:550:600:100:120
+```
+
+**Las coordenadas del ejemplo son ilustrativas**, deben seleccionarse en el documento real y estar dentro de sus dimensiones. Una región estadística no constituye una máscara validada o una etiqueta fiable de pigmento: requiere inspección visual. Cada ejecución debe usar una carpeta nueva; se rechaza escribir sobre una carpeta no vacía.
+
+Pruebas unitarias sin originales:
+
+```bash
+.venv/bin/python -m unittest discover -s tests -p 'test_diagnose_masks.py' -v
+```
+
+Ninguna imagen original se sube al repositorio y no se altera el método `legacy` ni el TIFF CMYK editable.
+
 ## Limitaciones actuales
 
 - **No procesa RGB** (por ejemplo `23.jpg` si es sRGB): lo registra como error hasta que se diseñe una salida que preserve RGB y su ICC.
