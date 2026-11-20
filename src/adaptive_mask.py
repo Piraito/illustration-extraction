@@ -89,14 +89,30 @@ def adaptive_alpha(rgb, sigma_papel=100, threshold=6.0, transition=12.0):
     # at its outline; do not rely on the color of enclosed pale washes.
     inner = cv2.distanceTransform(envelope, cv2.DIST_L2, 5)
     protected = np.clip((inner - 0.5) / 2.0, 0, 1)
-    # On the outside, retain weaker pigment only close to detected artwork;
-    # paper texture elsewhere is not permitted to grow isolated alpha.
-    margin = max(9, min(61, int(round(min(h, w) * 0.018)) | 1))
-    neighborhood = cv2.dilate(
-        envelope, cv2.getStructuringElement(
-            cv2.MORPH_ELLIPSE, (margin, margin)))
-    faint = np.clip((difference - max(1.5, onset * 0.35)) /
-                    max(transition, 1.0), 0, 1)
-    exterior = np.maximum(alpha, faint * 0.85) * neighborhood
+    # An outer watercolor wash is often broader than the sharply painted body.
+    # Fixed-radius dilation loses it; evaluate low-frequency color deviations
+    # against the *border paper* and taper the eligible exterior with distance.
+    # Spatial smoothing rejects high-frequency paper grain, while the broad,
+    # gradual reach avoids a hard crop around the main subject.
+    distance_outside = cv2.distanceTransform(
+        (1 - envelope).astype(np.uint8), cv2.DIST_L2, 5)
+    reach = max(18.0, min(h, w) * 0.22)
+    vicinity = np.clip(1.0 - distance_outside / reach, 0, 1)
+    smooth_sigma = max(2.0, min(h, w) * 0.012)
+    smooth_lab = cv2.GaussianBlur(lab, (0, 0), smooth_sigma)
+    # Compared with the near-white border reference, chromatic displacement
+    # is often more informative than a very small luminance difference.
+    smooth_delta = smooth_lab - center
+    wash_signal = np.sqrt(
+        (0.35 * smooth_delta[..., 0]) ** 2
+        + smooth_delta[..., 1] ** 2
+        + smooth_delta[..., 2] ** 2)
+    paper_noise = max(0.8, noise * 0.6)
+    wash_confidence = np.clip(
+        (wash_signal - paper_noise) / max(3.0, transition * 0.65), 0, 1)
+    # Do not extend the wash response into unbounded paper, even if paper
+    # illumination differs slightly from that of the scan's border.
+    wash = wash_confidence * vicinity
+    exterior = np.maximum(alpha * vicinity, wash)
     result = np.maximum(protected, exterior)
     return np.clip(result, 0, 1).astype(np.float32)
