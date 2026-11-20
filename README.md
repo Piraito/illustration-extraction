@@ -4,11 +4,12 @@ Extracción **experimental** de ilustraciones escaneadas sobre papel claro media
 
 ## Estado
 
-Herramienta lista para aplicar **con revisión visual por ilustración** a la colección de tiburones. El método recomendado es `legacy`, validado visualmente en la acuarela de prueba; no es un extractor genérico validado para cualquier papel o color. Se conservan las dimensiones de los escaneos y no se modifican los originales.
+Herramienta lista para aplicar **con revisión visual por ilustración** a la colección de tiburones. El método recomendado es `acuarela`, validado visualmente en la acuarela de prueba; no es un extractor genérico validado para cualquier papel o color. Se conservan las dimensiones de los escaneos y no se modifican los originales.
 
-## Procedimiento definitivo para el libro de tiburones (20 noviembre 2026)
+La denominación `legacy` se conserva solo como **alias histórico** en la CLI y en los informes de las pruebas antiguas. `acuarela` ejecuta exactamente el mismo algoritmo, sin modificación de píxeles ni parámetros. 
+\n## Procedimiento definitivo para el libro de tiburones (20 noviembre 2026)
 
-**Método recomendado:** `legacy` (predeterminado). Las variantes `adaptive`, `legacy-plus` y `connected-wash` no han producido una mejora visual útil sobre `10.psd`; se conservan solo para trazabilidad. El TIFF editable CMYK con perfil original y máscara real se ha comprobado en Krita. Las demás acuarelas requieren revisión individual; no se garantiza un recorte perfecto.
+**Método recomendado:** `acuarela` (predeterminado). Las variantes `adaptive`, `legacy-plus` y `connected-wash` no han producido una mejora visual útil sobre `10.psd`; se conservan solo para trazabilidad. El TIFF editable CMYK con perfil original y máscara real se ha comprobado en Krita. Las demás acuarelas requieren revisión individual; no se garantiza un recorte perfecto.
 
 **Ejecutar desde** `/SISE/proyectos/Agaden/Tiburones/Ilustraciones Natalia` en Paul:
 
@@ -19,13 +20,13 @@ git pull
 .venv/bin/python -m unittest discover -s tests -p 'test_layered_tiff.py' -v
 .venv/bin/python src/extract_illustrations.py \
   "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO" \
-  "../ilustraciones-extraidas-legacy" \
-  --solo-psd --mask-method legacy --output-format both
+  "../ilustraciones-extraidas-acuarela" \
+  --solo-psd --mask-method acuarela --output-format both
 ```
 
 - `--solo-psd` evita procesar el JPG RGB `23.jpg`; `23.psd` sí se procesa. **No mueve ni borra el JPG**.
 - `--output-format both` genera por cada `NN.psd` los archivos `NN.tif` (CMYK + alfa, para maquetación) y `NN_editable.tif` (mismo CMYK y máscara de capa editable para corrección en Krita).
-- La salida se crea en `ilustraciones-extraidas-legacy`, carpeta **nueva** distinta de `ilustraciones-extraidas` y de todas las pruebas anteriores.
+- La salida se crea en `ilustraciones-extraidas-acuarela`, carpeta **nueva** distinta de `ilustraciones-extraidas` y de todas las pruebas anteriores.
 - No se sobrescriben TIFF existentes. Los archivos ya generados se omiten; si necesitas reprocesar, usa una nueva carpeta de salida. Los problemas se registran en `errores_procesamiento.txt` y el proceso devuelve código de error si hay fallos.
 - Si algún PSD concreto falla, revisar el registro y el TIFF de ese archivo; no dar por correcto todo el lote solo por haber generado algunos archivos.
 - Comprobar `*_editable.tif` en Krita: responder **Sí** cuando ofrezca leer los datos PSD incrustados, revisar tonos y bordes, corregir manualmente la máscara si es necesario. **Las correcciones manuales en Krita no actualizan automáticamente el TIFF convencional `NN.tif`**: hay que exportar después la versión corregida destinada a maquetación, preservando CMYK y perfil ICC.
@@ -117,7 +118,7 @@ Los TIFF existentes se omiten; para regenerar con la máscara auxiliar utiliza o
 
 La opción `--mask-method` permite comparar:
 
-- `legacy` (predeterminado): algoritmo inicial, probado en el tiburón rosa.
+- `acuarela` (predeterminado): algoritmo inicial, probado en el tiburón rosa.
 - `adaptive`: detección generalizada en Lab, con estimación cromática del papel desde los bordes del escaneo, compensación espacial del fondo, eliminación de pequeñas partículas aisladas y preservación de componentes coloreados separados.
 
 El algoritmo nuevo **sigue en validación con la colección real**. Las primeras pruebas mostraron pérdida de blancos interiores y, posteriormente, de aguadas extensas de fondo. Se conserva la protección espacial del interior y se ha añadido una detección de aguadas externas de baja frecuencia: compara el color suavizado con el papel de los bordes y reduce progresivamente la confianza con la distancia a la ilustración. La corrección de aguadas requiere todavía validación visual sobre los tiburones reales. Esto puede conservar algo más de papel junto a la ilustración, deliberadamente, para priorizar la integridad de la pintura. Presupone que hay suficiente papel alrededor de las ilustraciones. Los parámetros `--umbral` y `--anchura` se interpretan en unidades Lab en `adaptive`, por lo que no son directamente equivalentes a los de `legacy`. El CMYK, el ICC, las dimensiones y el modo de TIFF se conservan sin cambios.
@@ -231,7 +232,7 @@ La segunda orden genera también `legacy_plus_alpha_experimental.png`, `legacy_p
 
 `src/connected_wash.py` propone una nueva variante **sin modificar `legacy`**: identifica píxeles cromáticamente diferentes del papel, encuentra sus componentes conectados y acepta solo los que contienen píxeles conservados con alta confianza por `legacy`. Excluye componentes conectados al borde del escaneo para reducir falsos positivos. No usa desenfoque, distancia al sujeto, dilatación ni degradados espaciales para asignar alfa. Conserva como mínimo el alfa original.
 
-**Exportación para inspección en Krita:** también puede seleccionarse explícitamente con `--mask-method connected-wash --output-format tiff-layer-mask`. Se usa el escritor TIFF CMYK/ICC con máscara de capa ya validado; solo cambia el alfa experimental. No se recomienda para producción y `legacy` sigue siendo el método predeterminado.
+**Exportación para inspección en Krita:** también puede seleccionarse explícitamente con `--mask-method connected-wash --output-format tiff-layer-mask`. Se usa el escritor TIFF CMYK/ICC con máscara de capa ya validado; solo cambia el alfa experimental. No se recomienda para producción y `acuarela` sigue siendo el método predeterminado.
 
 La conectividad no demuestra que una región sea pigmento; el papel con dominante y las aguadas parcialmente desconectadas pueden provocar errores. Es un **experimento sin validación visual suficiente**; la exportación únicamente facilita examinarlo con zoom y editar su máscara.
 
@@ -265,11 +266,11 @@ Comparar `connected_wash_sobre_damero_experimental.png` con `legacy_sobre_damero
 
 ## Decisión final de evaluación visual (20 de noviembre de 2026)
 
-La validación manual del TIFF `connected-wash` en Krita confirmó que el resultado era visualmente indistinguible de `legacy` a efectos prácticos. Se cierra esta línea de experimentación: **`legacy` es el mejor método probado y el único recomendado para las acuarelas examinadas**.
+La validación manual del TIFF `connected-wash` en Krita confirmó que el resultado era visualmente indistinguible de `legacy` a efectos prácticos. Se cierra esta línea de experimentación: **`acuarela` (denominado anteriormente `legacy`) es el mejor método probado y el único recomendado para las acuarelas examinadas**.
 
 Las otras variantes (`adaptive`, `legacy-plus` y `connected-wash`) se conservan por trazabilidad y reproducción de las pruebas, pero no se recomiendan para maquetación. No seguir ajustando heurísticas equivalentes sin nuevas evidencias o máscaras de referencia.
 
-Flujo recomendado: ejecutar `--mask-method legacy --output-format tiff-layer-mask`, abrir el TIFF en Krita y retocar manualmente su máscara cuando sea necesario. Los canales CMYK originales, el ICC y la integridad del TIFF editable permanecen intactos.
+Flujo recomendado: ejecutar `--mask-method acuarela --output-format tiff-layer-mask`, abrir el TIFF en Krita y retocar manualmente su máscara cuando sea necesario. Los canales CMYK originales, el ICC y la integridad del TIFF editable permanecen intactos.
 
 ## Limitaciones actuales
 
