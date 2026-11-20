@@ -92,7 +92,7 @@ La opción `--mask-method` permite comparar:
 - `legacy` (predeterminado): algoritmo inicial, probado en el tiburón rosa.
 - `adaptive`: detección generalizada en Lab, con estimación cromática del papel desde los bordes del escaneo, compensación espacial del fondo, eliminación de pequeñas partículas aisladas y preservación de componentes coloreados separados.
 
-El algoritmo nuevo **no está validado aún con la colección real**, y presupone que hay suficiente papel alrededor de las ilustraciones. Los parámetros `--umbral` y `--anchura` se interpretan en unidades Lab en `adaptive`, por lo que no son directamente equivalentes a los de `legacy`. El CMYK, el ICC, las dimensiones y el modo de TIFF se conservan sin cambios.
+El algoritmo nuevo **sigue en validación con la colección real**. La primera prueba mostró pérdida de aguadas de fondo y blancos interiores; se añadió una protección espacial conservadora para las regiones encerradas por pigmento y una detección más suave en su perímetro. Esto puede conservar algo más de papel junto a la ilustración, deliberadamente, para priorizar la integridad de la pintura. Presupone que hay suficiente papel alrededor de las ilustraciones. Los parámetros `--umbral` y `--anchura` se interpretan en unidades Lab en `adaptive`, por lo que no son directamente equivalentes a los de `legacy`. El CMYK, el ICC, las dimensiones y el modo de TIFF se conservan sin cambios.
 
 Ejemplo desde la raíz de este repositorio, en carpetas separadas:
 
@@ -109,7 +109,7 @@ Prueba automática del nuevo algoritmo (sin archivos reales):
 .venv/bin/python -m unittest discover -s tests -p 'test_adaptive_mask.py' -v
 ```
 
-Revisar las aguadas tenues, los bordes sobre fondos claros y oscuros, y la protección de elementos separados antes de usar la máscara nueva para producción.
+**Importante:** la protección espacial solo puede garantizar regiones interiores identificadas por el contorno de pigmento; aguadas débiles aisladas y áreas abiertas siguen siendo problemáticas. Revisar las aguadas tenues, los bordes sobre fondos claros y oscuros, y los elementos separados antes de usar la máscara nueva para producción.
 
 ## Limitaciones actuales
 
