@@ -79,7 +79,6 @@ def diagnostics(rgb, regions=(), sigma=100, umbral=5.5, anchura=19):
     difference_rgb[..., 2] = negative
 
     # Identical sRGB source shown over checkerboard for honest visual comparison.
-    checker = np.indices((h, w)).sum(axis=0)  # temporary; overwritten below
     yy, xx = np.ogrid[:h, :w]
     checker = np.where(((yy // 24 + xx // 24) % 2) == 0,
                        230, 190).astype(np.uint8)
