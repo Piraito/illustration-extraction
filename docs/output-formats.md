@@ -1,6 +1,6 @@
 # Diseño de formatos de salida
 
-**Estado:** los tres modos ya tienen una implementación en la CLI. `tiff-layer-mask` y `both` son **experimentales** y requieren validación de interoperabilidad real con Krita.
+**Estado (20 noviembre 2026):** `tiff-alpha` se ha verificado estructuralmente; `tiff-layer-mask` se ha probado visualmente en Krita con colores CMYK y máscara funcional. `both` combina ambos escritores y es el formato de lote recomendado, con revisión visual individual. No se garantiza interoperabilidad universal con otros editores.
 
 ## Objetivo
 
@@ -44,7 +44,7 @@ Cuando colisionen nombres como `23.psd` y `23.jpg`, conservar la convención `23
 - Los cuatro canales CMYK y el perfil ICC deben ser idénticos a los de la imagen compuesta importada; conservar dimensiones y resolución.
 - No implica máscara de capa editable dentro de un editor. Desactivar la transparencia puede no revelar el contenido oculto en GIMP/Krita.
 
-### `tiff-layer-mask` — experimental
+### `tiff-layer-mask` — validado en Krita para la muestra
 
 - Un **único TIFF** que contenga la imagen CMYK original completa y una **máscara de capa editable interna**, activable/desactivable, no solo una muestra alfa de la imagen acoplada.
 - El comportamiento requerido es: máscara activada = imagen recortada; máscara desactivada = **todo el escaneo original con papel**, sin recomposición ni reconstrucción.
@@ -53,7 +53,7 @@ Cuando colisionen nombres como `23.psd` y `23.jpg`, conservar la convención `23
 - Antes de declarar este modo compatible, comprobar **guardado y reapertura real** en Krita (y documentar las limitaciones de GIMP). No sustituir silenciosamente la máscara de capa por alfa simple si el programa no reconoce la estructura.
 - El TIFF base deberá tener una apariencia compuesta coherente con la máscara, cuando el software respete los datos de capas, pero nunca a costa de eliminar los píxeles CMYK ocultos.
 
-### `both` — experimental
+### `both` — recomendado para generar las dos salidas
 
 - Genera ambos formatos con **la misma máscara calculada**.
 - Un fallo de uno de los formatos debe quedar registrado sin afirmar que ambos se generaron satisfactoriamente.
@@ -92,3 +92,11 @@ La primera apertura del TIFF editable en Krita confirmó que la **máscara de ca
 El usuario confirmó que el TIFF editable regenerado tras la corrección de polaridad CMYK **se ve correctamente en Krita**. En la prueba anterior había confirmado explícitamente que la máscara era reconocida y funcionaba, aunque los colores eran incorrectos. Tras la corrección, informa «está bien en krita»; por ello se considera validada la combinación básica de capas, máscara y color para la ilustración probada. No equivale a certificar compatibilidad universal ni a verificar de nuevo por separado cada operación de activación/desactivación de la máscara en otros documentos.
 
 Se mantiene el modo `tiff-alpha` y el modo `tiff-layer-mask` como alternativas. Próxima fase: evaluar calidad de segmentación en varias acuarelas y decidir si optimizar los píxeles ocultos en la salida no editable.
+
+## Cierre de investigación y aplicación al lote (20 noviembre 2026)
+
+La prueba real en Krita de `10_editable.tif` validó la lectura del CMYK original con máscara de capa separada. En el análisis posterior, `legacy` fue visualmente superior a `adaptive`; las variantes `legacy-plus` y `connected-wash` no aportaron una mejora significativa, por lo que no se recomienda su uso en producción. Mantener `legacy` como predeterminado; preservar los experimentos solamente como historial técnico.
+
+La línea de comandos final se documenta al comienzo de [README.md](../README.md). Se añadió `--solo-psd` para evitar que un JPG RGB (como `23.jpg`) interrumpa el procesamiento de la colección, sin eliminarlo ni modificarlo. El resultado recomendado es `--solo-psd --mask-method legacy --output-format both`, con salida a carpeta nueva. Revisar individualmente las máscaras en Krita y exportar por separado el TIFF de maquetación si la máscara ha sido retocada manualmente. Esta prueba no constituye una validación de Scribus, que no es requisito del proyecto.
+
+Las menciones anteriores a validaciones pendientes documentan hitos históricos; queda cerrada la comprobación inicial de Krita sobre la ilustración de prueba, no la revisión de las restantes ilustraciones.
