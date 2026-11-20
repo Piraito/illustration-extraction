@@ -61,7 +61,7 @@ El programa no sobrescribe archivos TIFF existentes. En caso de archivos homóni
 | Modo | Salida | Estado |
 | --- | --- | --- |
 | `tiff-alpha` (predeterminado) | `10.tif` (CMYK + alfa no premultiplicado) | Validado previamente sobre PSD real |
-| `tiff-layer-mask` | `10_editable.tif` (TIFF con datos de capa CMYK y máscara editable estilo Photoshop) | Implementación experimental, pendiente de comprobar en Krita |
+| `tiff-layer-mask` | `10_editable.tif` (TIFF con datos de capa CMYK y máscara editable estilo Photoshop) | Validado visualmente en Krita con la ilustración de prueba |
 | `both` | Ambos TIFF | Implementación experimental |
 
 Para disponer del nuevo modo editable en el entorno virtual:
@@ -73,7 +73,7 @@ Para disponer del nuevo modo editable en el entorno virtual:
 
 Para mantener exclusivamente la salida convencional, basta con `requirements.txt` y omitir `--output-format`.
 
-**Importante:** el modo editable escribe tanto los datos TIFF compuestos como un bloque `ImageSourceData` (37724) con una capa que contiene los cuatro canales CMYK y una máscara de usuario independiente (`USER_LAYER_MASK`, -2). La imagen original se almacena completa. Se comprueba la integridad del TIFF y de su información de capas/máscara al guardarlo, pero **todavía no se ha demostrado que Krita o GIMP importen ese canal como máscara de capa editable**. Si el editor no lo reconoce, el archivo puede abrirse como TIFF aplanado con alfa.
+**Importante:** el modo editable escribe tanto los datos TIFF compuestos como un bloque `ImageSourceData` (37724) con una capa que contiene los cuatro canales CMYK y una máscara de usuario independiente (`USER_LAYER_MASK`, -2). La imagen original se almacena completa. Se comprueba la integridad del TIFF y de su información de capas/máscara al guardarlo, y Krita reconoció correctamente la máscara y los colores en una prueba real tras corregir la polaridad CMYK. La compatibilidad con GIMP y otras versiones sigue sin confirmarse.
 
 El PNG auxiliar de máscara es opcional: utilizar `--export-mask` cuando se necesite para diagnóstico. Para las decisiones de formato y los criterios de aceptación, consulta [docs/output-formats.md](docs/output-formats.md).
 
@@ -84,6 +84,32 @@ Ejemplo de exportación opcional de la máscara para inspección:
 ```
 
 Los TIFF existentes se omiten; para regenerar con la máscara auxiliar utiliza otra carpeta de salida.
+
+## Comparar el algoritmo de máscaras (experimental)
+
+La opción `--mask-method` permite comparar:
+
+- `legacy` (predeterminado): algoritmo inicial, probado en el tiburón rosa.
+- `adaptive`: detección generalizada en Lab, con estimación cromática del papel desde los bordes del escaneo, compensación espacial del fondo, eliminación de pequeñas partículas aisladas y preservación de componentes coloreados separados.
+
+El algoritmo nuevo **no está validado aún con la colección real**, y presupone que hay suficiente papel alrededor de las ilustraciones. Los parámetros `--umbral` y `--anchura` se interpretan en unidades Lab en `adaptive`, por lo que no son directamente equivalentes a los de `legacy`. El CMYK, el ICC, las dimensiones y el modo de TIFF se conservan sin cambios.
+
+Ejemplo desde la raíz de este repositorio, en carpetas separadas:
+
+```bash
+.venv/bin/python src/extract_illustrations.py ../pruebas ../comparacion-legacy \
+  --output-format tiff-layer-mask --mask-method legacy
+.venv/bin/python src/extract_illustrations.py ../pruebas ../comparacion-adaptive \
+  --output-format tiff-layer-mask --mask-method adaptive
+```
+
+Prueba automática del nuevo algoritmo (sin archivos reales):
+
+```bash
+.venv/bin/python -m unittest discover -s tests -p 'test_adaptive_mask.py' -v
+```
+
+Revisar las aguadas tenues, los bordes sobre fondos claros y oscuros, y la protección de elementos separados antes de usar la máscara nueva para producción.
 
 ## Limitaciones actuales
 
