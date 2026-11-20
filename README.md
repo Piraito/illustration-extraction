@@ -161,6 +161,23 @@ Pruebas unitarias sin originales:
 
 Ninguna imagen original se sube al repositorio y no se altera el método `legacy` ni el TIFF CMYK editable.
 
+## Experimento cromático conservador (20 noviembre 2026)
+
+El diagnóstico visual de `10.psd` demuestra que `legacy` conserva mejor la aguada rosa que `adaptive`. Una investigación adicional **sobre los PNG reducidos de ese diagnóstico**, no sobre el PSD a resolución completa, indica que un umbral cromático suficientemente estricto para discriminar el papel añade muy pocos píxeles respecto a `legacy`; reducirlo aumenta claramente la detección espuria en el papel del borde. **No se ha demostrado una mejora visual**.
+
+Para investigar con rigor, se añadió `src/chroma_probe.py`: es un **ensayo de diagnóstico**, no un tercer modo de extracción. Compara una señal cromática local Lab a/b (sin desenfoque ni dilatación) con el alfa exacto de `legacy`, calcula `max(legacy, cromático)` únicamente como hipótesis y muestra cuánto alfa se añade y cuánto aparece incorrectamente en el borde del papel.
+
+```bash
+.venv/bin/python -m unittest discover -s tests -p 'test_chroma_probe.py' -v
+.venv/bin/python src/chroma_probe.py \
+  "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO/10.psd" \
+  "../diagnostico-cromatico-10"
+```
+
+Genera `01_legacy_alpha.png`, `02_candidato_cromatico.png`, `03_combinado_experimental.png`, `04_alfa_anadido.png`, `05_distancia_cromatica.png` y `informe.json`. Si el mapa `04` está casi negro, la señal nueva no aporta valor. Si se ilumina el papel, indica falsos positivos. La referencia de papel se extrae del borde y **no permite concluir** que cualquier diferencia cromática sea pigmento.
+
+No modifica `legacy`, los TIFF, el ICC ni la imagen CMYK. No incorporar esta variante a producción sin contraste visual y mediciones sobre el PSD real.
+
 ## Limitaciones actuales
 
 - **No procesa RGB** (por ejemplo `23.jpg` si es sRGB): lo registra como error hasta que se diseñe una salida que preserve RGB y su ICC.
