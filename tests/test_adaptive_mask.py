@@ -35,6 +35,19 @@ class AdaptiveMaskTests(unittest.TestCase):
         self.assertGreater(alpha[70, 170], .9)
         self.assertLess(alpha[10, 10], .01)
 
+    def test_pale_interior_within_painted_outline_is_protected(self):
+        # Light body surrounded by darker pigment, as in a shark watercolor.
+        rgb = np.full((360, 480, 3), [.955, .935, .89], np.float32)
+        cv2.ellipse(rgb, (245, 175), (135, 87), 0, 0, 360,
+                    (.42, .52, .65), 10)
+        cv2.ellipse(rgb, (245, 175), (125, 77), 0, 0, 360,
+                    (.925, .90, .87), -1)
+        alpha = adaptive_alpha(rgb, sigma_papel=35)
+        self.assertGreater(alpha[175, 245], .95,
+                           'The pale shark interior must remain opaque')
+        self.assertLess(alpha[15, 15], .05,
+                        'Unpainted outer paper must be transparent')
+
     def test_invalid_image(self):
         with self.assertRaises(ValueError):
             adaptive_alpha(np.zeros((30, 30), np.float32))
