@@ -235,6 +235,14 @@ Abrir `../resultado-connected-10/10_editable.tif` en Krita y responder **Sí** a
 
 Comparar `connected_wash_sobre_damero_experimental.png` con `legacy_sobre_damero.png`. Examinar `connected_wash_adicion_experimental.png`: solo muestra el alfa que se propone añadir. `informe.json` incluye el umbral cromático escogido, componentes aceptados y píxeles adicionales. La validación visual decidirá si se continúa o se descarta.
 
+## Decisión final de evaluación visual (20 de noviembre de 2026)
+
+La validación manual del TIFF `connected-wash` en Krita confirmó que el resultado era visualmente indistinguible de `legacy` a efectos prácticos. Se cierra esta línea de experimentación: **`legacy` es el mejor método probado y el único recomendado para las acuarelas examinadas**.
+
+Las otras variantes (`adaptive`, `legacy-plus` y `connected-wash`) se conservan por trazabilidad y reproducción de las pruebas, pero no se recomiendan para maquetación. No seguir ajustando heurísticas equivalentes sin nuevas evidencias o máscaras de referencia.
+
+Flujo recomendado: ejecutar `--mask-method legacy --output-format tiff-layer-mask`, abrir el TIFF en Krita y retocar manualmente su máscara cuando sea necesario. Los canales CMYK originales, el ICC y la integridad del TIFF editable permanecen intactos.
+
 ## Limitaciones actuales
 
 - **No procesa RGB** (por ejemplo `23.jpg` si es sRGB): lo registra como error hasta que se diseñe una salida que preserve RGB y su ICC.
