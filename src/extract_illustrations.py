@@ -170,8 +170,8 @@ def main():
                     help='Exportar además una máscara PNG de diagnóstico (desactivado por defecto)')
     ap.add_argument('--output-format', choices=('tiff-alpha', 'tiff-layer-mask', 'both'),
                     default='tiff-alpha', help='Formato(s) TIFF de salida')
-    ap.add_argument('--mask-method', choices=('legacy', 'adaptive', 'connected-wash'), default='legacy',
-                    help='Máscara: legacy (predeterminada), adaptive o connected-wash (experimentales)')
+    ap.add_argument('--mask-method', choices=('acuarela', 'legacy', 'adaptive', 'connected-wash'), default='acuarela',
+                    help='Máscara: acuarela (recomendada y predeterminada); legacy es alias histórico')
     ap.add_argument('--sigma-papel', type=float, default=100)
     ap.add_argument('--umbral', type=float, default=5.5)
     ap.add_argument('--anchura', type=float, default=19)
