@@ -1,6 +1,6 @@
 # Diseño de formatos de salida
 
-**Estado (20 noviembre 2026):** `tiff-alpha` se ha verificado estructuralmente; `tiff-layer-mask` se ha probado visualmente en Krita con colores CMYK y máscara funcional. `both` combina ambos escritores y es el formato de lote recomendado, con revisión visual individual. No se garantiza interoperabilidad universal con otros editores.
+**Estado (20 noviembre 2026):** `tiff-alpha` se ha verificado estructuralmente; `tiff-layer-mask` se ha probado visualmente en Krita con colores CMYK y máscara funcional. `both` combina ambos escritores, pero el formato de lote recomendado es ahora `tiff-alpha`: Krita permite convertir directamente el alfa en máscara de capa mediante «Dividir alfa → Alfa en máscara», evitando duplicados `_editable`. No se garantiza interoperabilidad universal con otros editores.
 
 ## Objetivo
 
@@ -53,7 +53,7 @@ Cuando colisionen nombres como `23.psd` y `23.jpg`, conservar la convención `23
 - Antes de declarar este modo compatible, comprobar **guardado y reapertura real** en Krita (y documentar las limitaciones de GIMP). No sustituir silenciosamente la máscara de capa por alfa simple si el programa no reconoce la estructura.
 - El TIFF base deberá tener una apariencia compuesta coherente con la máscara, cuando el software respete los datos de capas, pero nunca a costa de eliminar los píxeles CMYK ocultos.
 
-### `both` — recomendado para generar las dos salidas
+### `both` — opcional, no necesario en el flujo actual
 
 - Genera ambos formatos con **la misma máscara calculada**.
 - Un fallo de uno de los formatos debe quedar registrado sin afirmar que ambos se generaron satisfactoriamente.
@@ -97,10 +97,14 @@ Se mantiene el modo `tiff-alpha` y el modo `tiff-layer-mask` como alternativas. 
 
 La prueba real en Krita de `10_editable.tif` validó la lectura del CMYK original con máscara de capa separada. En el análisis posterior, `legacy` fue visualmente superior a `adaptive`; las variantes `legacy-plus` y `connected-wash` no aportaron una mejora significativa, por lo que no se recomienda su uso en producción. Mantener `acuarela` como método predeterminado (`legacy` queda como alias histórico); preservar los experimentos solamente como historial técnico.
 
-La línea de comandos final se documenta al comienzo de [README.md](../README.md). Se añadió `--solo-psd` para evitar que un JPG RGB (como `23.jpg`) interrumpa el procesamiento de la colección, sin eliminarlo ni modificarlo. El resultado recomendado es `--solo-psd --mask-method acuarela --output-format both`, con salida a carpeta nueva. Revisar individualmente las máscaras en Krita y exportar por separado el TIFF de maquetación si la máscara ha sido retocada manualmente. Esta prueba no constituye una validación de Scribus, que no es requisito del proyecto.
+La línea de comandos final se documenta al comienzo de [README.md](../README.md). Se añadió `--solo-psd` para evitar que un JPG RGB (como `23.jpg`) interrumpa el procesamiento de la colección, sin eliminarlo ni modificarlo. El resultado recomendado es `--solo-psd --mask-method acuarela --output-format tiff-alpha`, con salida a carpeta nueva. En Krita, abrir el TIFF convencional y usar clic derecho en la capa → «Dividir alfa → Alfa en máscara»; revisar y retocar la máscara, guardar un archivo de trabajo y reexportar el TIFF para maquetación si se modifica. Esta prueba no constituye una validación de Scribus, que no es requisito del proyecto.
 
 Las menciones anteriores a validaciones pendientes documentan hitos históricos; queda cerrada la comprobación inicial de Krita sobre la ilustración de prueba, no la revisión de las restantes ilustraciones.
 
 ## Denominación del método definitivo
 
 El método seleccionado tras las comparaciones visuales se denomina **`acuarela`**. Es exactamente el algoritmo antes llamado `legacy`, sin cambios matemáticos ni cromáticos. La CLI acepta `legacy` como alias de compatibilidad, pero los ejemplos y el procedimiento de producción usan `--mask-method acuarela`. Los nombres históricos en resultados de diagnóstico se conservan para trazabilidad.
+
+## Simplificación del flujo final (20 noviembre 2026)
+
+El usuario comprobó que Krita permite convertir el alfa existente de un TIFF convencional en una máscara de capa editable mediante **clic derecho sobre la capa → Dividir alfa → Alfa en máscara**. Ya no hace falta exportar un segundo archivo `_editable.tif`. El método recomendado es `acuarela` y la salida única es `tiff-alpha` (predeterminado); el modo `tiff-layer-mask` queda disponible únicamente como alternativa histórica. Las dependencias extra `requirements-layered.txt` no son necesarias para el procedimiento normal; basta el entorno de `requirements.txt`. Los TIFF originales permanecen intactos mientras se trabaje sobre copias en Krita.
