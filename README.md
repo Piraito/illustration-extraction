@@ -203,7 +203,9 @@ La segunda orden genera también `legacy_plus_alpha_experimental.png`, `legacy_p
 
 `src/connected_wash.py` propone una nueva variante **sin modificar `legacy`**: identifica píxeles cromáticamente diferentes del papel, encuentra sus componentes conectados y acepta solo los que contienen píxeles conservados con alta confianza por `legacy`. Excluye componentes conectados al borde del escaneo para reducir falsos positivos. No usa desenfoque, distancia al sujeto, dilatación ni degradados espaciales para asignar alfa. Conserva como mínimo el alfa original.
 
-La conectividad no demuestra que una región sea pigmento; el papel con dominante y las aguadas parcialmente desconectadas pueden provocar errores. Es un **experimento de diagnóstico, no un método disponible para exportación**.
+**Exportación para inspección en Krita:** también puede seleccionarse explícitamente con `--mask-method connected-wash --output-format tiff-layer-mask`. Se usa el escritor TIFF CMYK/ICC con máscara de capa ya validado; solo cambia el alfa experimental. No se recomienda para producción y `legacy` sigue siendo el método predeterminado.
+
+La conectividad no demuestra que una región sea pigmento; el papel con dominante y las aguadas parcialmente desconectadas pueden provocar errores. Es un **experimento sin validación visual suficiente**; la exportación únicamente facilita examinarlo con zoom y editar su máscara.
 
 Prueba sintética:
 
@@ -218,6 +220,18 @@ Para un PSD real:
   "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO/10.psd" \
   "../diagnostico-10-connected"
 ```
+
+Para generar un TIFF editable **solo de 10.psd**, prepara una carpeta de entrada con esa muestra si no existe ya:
+
+```bash
+mkdir -p ../prueba-connected-10
+cp "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO/10.psd" ../prueba-connected-10/
+.venv/bin/python src/extract_illustrations.py \\
+  ../prueba-connected-10 ../resultado-connected-10 \\
+  --mask-method connected-wash --output-format tiff-layer-mask
+```
+
+Abrir `../resultado-connected-10/10_editable.tif` en Krita y responder **Sí** al aviso de datos PSD incrustados. La máscara debe aparecer independiente y poder desactivarse para recuperar el papel completo. Usar otra carpeta si la salida existe.
 
 Comparar `connected_wash_sobre_damero_experimental.png` con `legacy_sobre_damero.png`. Examinar `connected_wash_adicion_experimental.png`: solo muestra el alfa que se propone añadir. `informe.json` incluye el umbral cromático escogido, componentes aceptados y píxeles adicionales. La validación visual decidirá si se continúa o se descarta.
 
