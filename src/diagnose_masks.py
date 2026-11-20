@@ -14,6 +14,7 @@ from PIL import Image
 from extract_illustrations import extraer, leer
 from adaptive_mask import adaptive_alpha
 from legacy_plus_mask import propose_legacy_plus
+from connected_wash import connected_wash
 
 
 def to_u8(arr):
@@ -62,6 +63,7 @@ def diagnostics(rgb, regions=(), sigma=100, umbral=5.5, anchura=19):
     _, legacy = extraer(rgb, sigma, umbral, anchura)
     adaptive = adaptive_alpha(rgb, sigma, umbral, anchura)
     legacy_plus, addition = propose_legacy_plus(rgb, legacy)
+    connected, connected_addition, connected_info = connected_wash(rgb, legacy)
     lab, reference, border = paper_reference(rgb)
     disagreement = legacy - adaptive
     h, w = legacy.shape
@@ -97,11 +99,14 @@ def diagnostics(rgb, regions=(), sigma=100, umbral=5.5, anchura=19):
         'adaptive_alpha.png': to_u8(adaptive),
         'legacy_plus_alpha_experimental.png': to_u8(legacy_plus),
         'legacy_plus_adicion_experimental.png': to_u8(addition),
+        'connected_wash_alpha_experimental.png': to_u8(connected),
+        'connected_wash_adicion_experimental.png': to_u8(connected_addition),
         'diferencia_rojo_legacy_azul_adaptive.png': difference_rgb,
         'distancia_lab_papel.png': color_gray,
         'legacy_sobre_damero.png': composite(legacy),
         'adaptive_sobre_damero.png': composite(adaptive),
         'legacy_plus_sobre_damero_experimental.png': composite(legacy_plus),
+        'connected_wash_sobre_damero_experimental.png': composite(connected),
     }
     masks = {
         'papel_borde': border,
@@ -127,6 +132,7 @@ def diagnostics(rgb, regions=(), sigma=100, umbral=5.5, anchura=19):
         'fraction_adaptive_alpha_gt_005': round(float((adaptive > .05).mean()), 5),
         'fraction_legacy_plus_alpha_gt_005': round(float((legacy_plus > .05).mean()), 5),
         'fraction_legacy_plus_added_alpha_mean': round(float(addition.mean()), 6),
+        'connected_wash_experimental': connected_info,
         'regions': {
             key: describe(rgb, lab, reference, legacy, adaptive, mask)
             for key, mask in masks.items()
@@ -137,6 +143,7 @@ def diagnostics(rgb, regions=(), sigma=100, umbral=5.5, anchura=19):
             'Lab map is distance to border paper reference, not either method internal signal.',
             'Automatic regions are heuristics; they do not establish ground truth.',
             'legacy_plus is diagnostic-only, uses raw local chroma and never decreases legacy alpha.',
+            'connected_wash is diagnostic-only: connected Lab-chroma regions from reliable legacy seeds; no spatial feathering.',
         ],
     }
     return images, report
