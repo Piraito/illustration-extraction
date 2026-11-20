@@ -20,10 +20,9 @@ git pull
 .venv/bin/python src/extract_illustrations.py \
   "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO" \
   "../ilustraciones-extraidas-acuarela" \
-  --solo-psd --mask-method acuarela --output-format tiff-alpha
+  --mask-method acuarela --output-format tiff-alpha
 ```
 
-- `--solo-psd` evita procesar el JPG RGB `23.jpg`; `23.psd` sí se procesa. **No mueve ni borra el JPG**.
 - `--output-format tiff-alpha` genera únicamente `NN.tif` (CMYK original + alfa no premultiplicado); no se generan duplicados `_editable`.
 - La salida se crea en `ilustraciones-extraidas-acuarela`, carpeta **nueva** distinta de `ilustraciones-extraidas` y de todas las pruebas anteriores.
 - No se sobrescriben TIFF existentes. Los archivos ya generados se omiten; si necesitas reprocesar, usa una nueva carpeta de salida. Los problemas se registran en `errores_procesamiento.txt` y el proceso devuelve código de error si hay fallos.
