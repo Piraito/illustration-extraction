@@ -7,7 +7,7 @@ Extracción **experimental** de ilustraciones escaneadas sobre papel claro media
 Herramienta lista para aplicar **con revisión visual por ilustración** a la colección de tiburones. El método recomendado es `acuarela`, validado visualmente en la acuarela de prueba; no es un extractor genérico validado para cualquier papel o color. Se conservan las dimensiones de los escaneos y no se modifican los originales.
 
 La denominación `legacy` se conserva solo como **alias histórico** en la CLI y en los informes de las pruebas antiguas. `acuarela` ejecuta exactamente el mismo algoritmo, sin modificación de píxeles ni parámetros. 
-\n## Procedimiento definitivo para el libro de tiburones (20 noviembre 2026)
+## Procedimiento definitivo para el libro de tiburones (20 noviembre 2026)
 
 **Método recomendado:** `acuarela` (predeterminado). Las variantes `adaptive`, `legacy-plus` y `connected-wash` no han producido una mejora visual útil sobre `10.psd`; se conservan solo para trazabilidad. El TIFF editable CMYK con perfil original y máscara real se ha comprobado en Krita. Las demás acuarelas requieren revisión individual; no se garantiza un recorte perfecto.
 
