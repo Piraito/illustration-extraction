@@ -199,6 +199,28 @@ Desde la raíz del repositorio:
 
 La segunda orden genera también `legacy_plus_alpha_experimental.png`, `legacy_plus_adicion_experimental.png` (únicamente alfa añadido) y `legacy_plus_sobre_damero_experimental.png`. Revisar esa última frente a `legacy_sobre_damero.png` y consultar el `informe.json`. Este análisis es previo a cualquier integración en el extractor y no implica que `legacy-plus` sea mejor visualmente.
 
+## Experimento de continuidad cromática (solo diagnóstico)
+
+`src/connected_wash.py` propone una nueva variante **sin modificar `legacy`**: identifica píxeles cromáticamente diferentes del papel, encuentra sus componentes conectados y acepta solo los que contienen píxeles conservados con alta confianza por `legacy`. Excluye componentes conectados al borde del escaneo para reducir falsos positivos. No usa desenfoque, distancia al sujeto, dilatación ni degradados espaciales para asignar alfa. Conserva como mínimo el alfa original.
+
+La conectividad no demuestra que una región sea pigmento; el papel con dominante y las aguadas parcialmente desconectadas pueden provocar errores. Es un **experimento de diagnóstico, no un método disponible para exportación**.
+
+Prueba sintética:
+
+```bash
+.venv/bin/python -m unittest discover -s tests -p 'test_connected_wash.py' -v
+```
+
+Para un PSD real:
+
+```bash
+.venv/bin/python src/diagnose_masks.py \
+  "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO/10.psd" \
+  "../diagnostico-10-connected"
+```
+
+Comparar `connected_wash_sobre_damero_experimental.png` con `legacy_sobre_damero.png`. Examinar `connected_wash_adicion_experimental.png`: solo muestra el alfa que se propone añadir. `informe.json` incluye el umbral cromático escogido, componentes aceptados y píxeles adicionales. La validación visual decidirá si se continúa o se descarta.
+
 ## Limitaciones actuales
 
 - **No procesa RGB** (por ejemplo `23.jpg` si es sRGB): lo registra como error hasta que se diseñe una salida que preserve RGB y su ICC.
