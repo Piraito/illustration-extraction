@@ -48,6 +48,26 @@ class AdaptiveMaskTests(unittest.TestCase):
         self.assertLess(alpha[15, 15], .05,
                         'Unpainted outer paper must be transparent')
 
+    def test_broad_faint_colored_wash_outside_subject(self):
+        # Faint pink watercolor halo extending well beyond dark painted body.
+        h, w = 420, 520
+        yy, xx = np.mgrid[:h, :w]
+        paper = np.array([.96, .94, .90], dtype=np.float32)
+        rgb = np.broadcast_to(paper, (h, w, 3)).copy()
+        distance = np.hypot(xx - 260, yy - 210)
+        wash = np.clip((145 - distance) / 110, 0, 1).astype(np.float32)
+        rgb[..., 0] -= 0.055 * wash
+        rgb[..., 1] -= 0.12 * wash
+        rgb[..., 2] -= 0.075 * wash
+        cv2.ellipse(rgb, (260, 210), (75, 40), 0, 0, 360,
+                    (.35, .46, .57), -1)
+        alpha = adaptive_alpha(rgb, sigma_papel=30)
+        self.assertGreater(alpha[210, 365], .05,
+                           'Faint exterior wash must not disappear entirely')
+        self.assertLess(alpha[20, 20], .05,
+                        'Clean paper well away from paint must stay transparent')
+        self.assertGreater(alpha[210, 260], .95)
+
     def test_invalid_image(self):
         with self.assertRaises(ValueError):
             adaptive_alpha(np.zeros((30, 30), np.float32))
