@@ -168,6 +168,8 @@ def main():
                     help='Exportar además una máscara PNG de diagnóstico (desactivado por defecto)')
     ap.add_argument('--output-format', choices=('tiff-alpha', 'tiff-layer-mask', 'both'),
                     default='tiff-alpha', help='Formato(s) TIFF de salida')
+    ap.add_argument('--mask-method', choices=('legacy', 'adaptive'), default='legacy',
+                    help='Método de máscara: legacy (actual) o adaptive (experimental)')
     ap.add_argument('--sigma-papel', type=float, default=100)
     ap.add_argument('--umbral', type=float, default=5.5)
     ap.add_argument('--anchura', type=float, default=19)
@@ -198,7 +200,11 @@ def main():
             continue
         try:
             cmyk, rgb, icc, dpi = leer(src, args.magick)
-            _, alpha = extraer(rgb, args.sigma_papel, args.umbral, args.anchura)
+            if args.mask_method == 'adaptive':
+                from adaptive_mask import adaptive_alpha
+                alpha = adaptive_alpha(rgb, args.sigma_papel, args.umbral, args.anchura)
+            else:
+                _, alpha = extraer(rgb, args.sigma_papel, args.umbral, args.anchura)
             created = []
             try:
                 if dest in outputs:
