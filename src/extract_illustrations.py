@@ -168,8 +168,8 @@ def main():
                     help='Exportar además una máscara PNG de diagnóstico (desactivado por defecto)')
     ap.add_argument('--output-format', choices=('tiff-alpha', 'tiff-layer-mask', 'both'),
                     default='tiff-alpha', help='Formato(s) TIFF de salida')
-    ap.add_argument('--mask-method', choices=('legacy', 'adaptive'), default='legacy',
-                    help='Método de máscara: legacy (actual) o adaptive (experimental)')
+    ap.add_argument('--mask-method', choices=('legacy', 'adaptive', 'connected-wash'), default='legacy',
+                    help='Máscara: legacy (predeterminada), adaptive o connected-wash (experimentales)')
     ap.add_argument('--sigma-papel', type=float, default=100)
     ap.add_argument('--umbral', type=float, default=5.5)
     ap.add_argument('--anchura', type=float, default=19)
@@ -205,6 +205,10 @@ def main():
                 alpha = adaptive_alpha(rgb, args.sigma_papel, args.umbral, args.anchura)
             else:
                 _, alpha = extraer(rgb, args.sigma_papel, args.umbral, args.anchura)
+                if args.mask_method == 'connected-wash':
+                    from connected_wash import connected_wash
+                    alpha, _, info = connected_wash(rgb, alpha)
+                    print(f'  connected-wash experimental: {info}')
             created = []
             try:
                 if dest in outputs:
