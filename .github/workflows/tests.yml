@@ -21,5 +21,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_adaptive_mask.py' -v
       - name: Validate diagnostic maps
         run: python -m unittest discover -s tests -p 'test_diagnose_masks.py' -v
+      - name: Validate chromatic probe
+        run: python -m unittest discover -s tests -p 'test_chroma_probe.py' -v
       - name: Compile scripts
         run: python -m compileall -q src tests
