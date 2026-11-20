@@ -111,6 +111,16 @@ Prueba automática del nuevo algoritmo (sin archivos reales):
 
 **Importante:** la protección espacial solo puede garantizar regiones interiores identificadas por el contorno de pigmento; aguadas débiles aisladas y áreas abiertas siguen siendo problemáticas. Revisar las aguadas tenues, los bordes sobre fondos claros y oscuros, y los elementos separados antes de usar la máscara nueva para producción.
 
+## Resultado de las pruebas visuales de máscaras
+
+**Decisión (20 de noviembre de 2026):** mantener `--mask-method legacy` como método predeterminado y de referencia. El usuario verificó visualmente que `legacy` es claramente superior al experimento `adaptive` para las acuarelas de tiburones.
+
+- `adaptive` inicial: pérdida importante de aguadas de color exteriores y zonas claras interiores.
+- Tras protección espacial: interiores correctos, pero se seguía perdiendo gran parte de la aguada.
+- Tras ampliar detección espacial con imagen suavizada: aparece un halo desenfocado artificial en vez de recuperar la textura y los bordes reales de la acuarela.
+
+**No utilizar `adaptive` en producción** con estos escaneos. Se conserva como experimento separado para evitar perder el historial, pero no está validado. No continuar ajustando simplemente desenfoque, dilatación o umbrales. Próxima investigación: analizar casos reales de aguadas y pigmento frente a papel a escala de píxel (preferiblemente con recortes de originales y sus máscaras) y evaluar un método que respete la estructura fina sin crear halos. Ninguna modificación al proceso de color CMYK, ICC o al TIFF editable validado en Krita.
+
 ## Limitaciones actuales
 
 - **No procesa RGB** (por ejemplo `23.jpg` si es sRGB): lo registra como error hasta que se diseñe una salida que preserve RGB y su ICC.
