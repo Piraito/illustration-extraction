@@ -164,6 +164,8 @@ def main():
     ap.add_argument('salida', type=Path)
     ap.add_argument('--magick', default='convert', help='Ejecutable ImageMagick (convert en Ubuntu; magick en IM7)')
     ap.add_argument('--recursivo', action='store_true')
+    ap.add_argument('--solo-psd', action='store_true',
+                    help='Procesar solo PSD, ignorando JPG/JPEG (incluidos RGB)')
     ap.add_argument('--export-mask', action='store_true',
                     help='Exportar además una máscara PNG de diagnóstico (desactivado por defecto)')
     ap.add_argument('--output-format', choices=('tiff-alpha', 'tiff-layer-mask', 'both'),
@@ -179,7 +181,7 @@ def main():
     if args.entrada.resolve() == args.salida.resolve():
         ap.error('Entrada y salida deben ser distintas')
     files = sorted(p for p in (args.entrada.rglob('*') if args.recursivo else args.entrada.iterdir())
-                   if p.is_file() and p.suffix.lower() in EXTS)
+                   if p.is_file() and p.suffix.lower() in ({'.psd'} if args.solo_psd else EXTS))
     args.salida.mkdir(parents=True, exist_ok=True)
     # Si 23.psd y 23.jpg coexisten, no deben generar ambos 23.tif.
     bases = Counter(str(p.relative_to(args.entrada).with_suffix('')).lower() for p in files)
