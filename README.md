@@ -178,6 +178,27 @@ Genera `01_legacy_alpha.png`, `02_candidato_cromatico.png`, `03_combinado_experi
 
 No modifica `legacy`, los TIFF, el ICC ni la imagen CMYK. No incorporar esta variante a producción sin contraste visual y mediciones sobre el PSD real.
 
+## Experimento conservador: `legacy-plus` (solo diagnóstico)
+
+A partir del diagnóstico real de `10.psd` se añadió `src/legacy_plus_mask.py`, que **no sustituye ni modifica** el extractor ni el formato TIFF. Es una propuesta para recuperar pigmento adicional únicamente cuando:
+
+- el píxel muestra una diferencia **cromática local** respecto al papel de referencia, sin suavizar el color;
+- el píxel está próximo a una zona que `legacy` ya conserva;
+- la nueva máscara nunca reduce la opacidad de `legacy` (`max(legacy, propuesta)`).
+
+Se evita explícitamente extender opacidad mediante un radio de desenfoque o un degradado espacial. Sigue siendo heurístico y puede incluir ruido de escaneo o pigmento falso: **no validado para exportación ni producción**.
+
+Desde la raíz del repositorio:
+
+```bash
+.venv/bin/python -m unittest discover -s tests -p 'test_legacy_plus_mask.py' -v
+.venv/bin/python src/diagnose_masks.py \
+  "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO/10.psd" \
+  "../diagnostico-10-legacy-plus"
+```
+
+La segunda orden genera también `legacy_plus_alpha_experimental.png`, `legacy_plus_adicion_experimental.png` (únicamente alfa añadido) y `legacy_plus_sobre_damero_experimental.png`. Revisar esa última frente a `legacy_sobre_damero.png` y consultar el `informe.json`. Este análisis es previo a cualquier integración en el extractor y no implica que `legacy-plus` sea mejor visualmente.
+
 ## Limitaciones actuales
 
 - **No procesa RGB** (por ejemplo `23.jpg` si es sRGB): lo registra como error hasta que se diseñe una salida que preserve RGB y su ICC.
