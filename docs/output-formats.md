@@ -86,3 +86,9 @@ Cuando colisionen nombres como `23.psd` y `23.jpg`, conservar la convención `23
 ## Corrección de polaridad CMYK (19 noviembre 2026)
 
 La primera apertura del TIFF editable en Krita confirmó que la **máscara de capa sí funciona**, pero mostró colores invertidos y fondo negro. Se ha corregido la polaridad de los canales CMYK **solo dentro de la estructura de capa estilo PSD**: se guardan como `255 - canal_CMYK_TIFF`, para que el importador PSD los interprete correctamente. Los cuatro canales del TIFF convencional y el ICC permanecen intactos. La prueba de lectura verifica el retorno a los valores originales al desinvertirlos. **Pendiente de confirmación visual con un TIFF recién generado en Krita**; no sobrescribir automáticamente archivos previos.
+
+## Validación manual en Krita — 20 noviembre 2026
+
+El usuario confirmó que el TIFF editable regenerado tras la corrección de polaridad CMYK **se ve correctamente en Krita**. En la prueba anterior había confirmado explícitamente que la máscara era reconocida y funcionaba, aunque los colores eran incorrectos. Tras la corrección, informa «está bien en krita»; por ello se considera validada la combinación básica de capas, máscara y color para la ilustración probada. No equivale a certificar compatibilidad universal ni a verificar de nuevo por separado cada operación de activación/desactivación de la máscara en otros documentos.
+
+Se mantiene el modo `tiff-alpha` y el modo `tiff-layer-mask` como alternativas. Próxima fase: evaluar calidad de segmentación en varias acuarelas y decidir si optimizar los píxeles ocultos en la salida no editable.
