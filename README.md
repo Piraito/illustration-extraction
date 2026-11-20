@@ -4,7 +4,35 @@ Extracción **experimental** de ilustraciones escaneadas sobre papel claro media
 
 ## Estado
 
-Prototipo basado en una acuarela de prueba. **No es un extractor genérico validado**: los umbrales cromáticos actuales están calibrados para papel claro y aguadas rosadas. Se conservan las dimensiones de los escaneos y no se modifican los originales.
+Herramienta lista para aplicar **con revisión visual por ilustración** a la colección de tiburones. El método recomendado es `legacy`, validado visualmente en la acuarela de prueba; no es un extractor genérico validado para cualquier papel o color. Se conservan las dimensiones de los escaneos y no se modifican los originales.
+
+## Procedimiento definitivo para el libro de tiburones (20 noviembre 2026)
+
+**Método recomendado:** `legacy` (predeterminado). Las variantes `adaptive`, `legacy-plus` y `connected-wash` no han producido una mejora visual útil sobre `10.psd`; se conservan solo para trazabilidad. El TIFF editable CMYK con perfil original y máscara real se ha comprobado en Krita. Las demás acuarelas requieren revisión individual; no se garantiza un recorte perfecto.
+
+**Ejecutar desde** `/SISE/proyectos/Agaden/Tiburones/Ilustraciones Natalia` en Paul:
+
+```bash
+cd illustration-extraction
+git pull
+.venv/bin/python -m pip install -r requirements-layered.txt
+.venv/bin/python -m unittest discover -s tests -p 'test_layered_tiff.py' -v
+.venv/bin/python src/extract_illustrations.py \
+  "../escaneadas-natalia/ESCANEADO IMAGENES LIBRO" \
+  "../ilustraciones-extraidas-legacy" \
+  --solo-psd --mask-method legacy --output-format both
+```
+
+- `--solo-psd` evita procesar el JPG RGB `23.jpg`; `23.psd` sí se procesa. **No mueve ni borra el JPG**.
+- `--output-format both` genera por cada `NN.psd` los archivos `NN.tif` (CMYK + alfa, para maquetación) y `NN_editable.tif` (mismo CMYK y máscara de capa editable para corrección en Krita).
+- La salida se crea en `ilustraciones-extraidas-legacy`, carpeta **nueva** distinta de `ilustraciones-extraidas` y de todas las pruebas anteriores.
+- No se sobrescriben TIFF existentes. Los archivos ya generados se omiten; si necesitas reprocesar, usa una nueva carpeta de salida. Los problemas se registran en `errores_procesamiento.txt` y el proceso devuelve código de error si hay fallos.
+- Si algún PSD concreto falla, revisar el registro y el TIFF de ese archivo; no dar por correcto todo el lote solo por haber generado algunos archivos.
+- Comprobar `*_editable.tif` en Krita: responder **Sí** cuando ofrezca leer los datos PSD incrustados, revisar tonos y bordes, corregir manualmente la máscara si es necesario. **Las correcciones manuales en Krita no actualizan automáticamente el TIFF convencional `NN.tif`**: hay que exportar después la versión corregida destinada a maquetación, preservando CMYK y perfil ICC.
+- En Scribus utilizar los TIFF definitivos tras revisión, no asumir que la máscara de todas las ilustraciones será óptima sin inspección.
+- Se mantienen las cuatro muestras CMYK del compuesto original, ICC, tamaño y resolución cuando está disponible. No hay conversión CMYK del original, ni prueba de interoperabilidad Scribus requerida.
+
+El resto de secciones recopila investigación y experimentos históricos y **no sustituye este procedimiento**.
 
 ## Instalación en entorno virtual (macOS y Linux)
 
