@@ -95,8 +95,12 @@ Se mantiene el modo `tiff-alpha` y el modo `tiff-layer-mask` como alternativas. 
 
 ## Cierre de investigación y aplicación al lote (20 noviembre 2026)
 
-La prueba real en Krita de `10_editable.tif` validó la lectura del CMYK original con máscara de capa separada. En el análisis posterior, `legacy` fue visualmente superior a `adaptive`; las variantes `legacy-plus` y `connected-wash` no aportaron una mejora significativa, por lo que no se recomienda su uso en producción. Mantener `legacy` como predeterminado; preservar los experimentos solamente como historial técnico.
+La prueba real en Krita de `10_editable.tif` validó la lectura del CMYK original con máscara de capa separada. En el análisis posterior, `legacy` fue visualmente superior a `adaptive`; las variantes `legacy-plus` y `connected-wash` no aportaron una mejora significativa, por lo que no se recomienda su uso en producción. Mantener `acuarela` como método predeterminado (`legacy` queda como alias histórico); preservar los experimentos solamente como historial técnico.
 
-La línea de comandos final se documenta al comienzo de [README.md](../README.md). Se añadió `--solo-psd` para evitar que un JPG RGB (como `23.jpg`) interrumpa el procesamiento de la colección, sin eliminarlo ni modificarlo. El resultado recomendado es `--solo-psd --mask-method legacy --output-format both`, con salida a carpeta nueva. Revisar individualmente las máscaras en Krita y exportar por separado el TIFF de maquetación si la máscara ha sido retocada manualmente. Esta prueba no constituye una validación de Scribus, que no es requisito del proyecto.
+La línea de comandos final se documenta al comienzo de [README.md](../README.md). Se añadió `--solo-psd` para evitar que un JPG RGB (como `23.jpg`) interrumpa el procesamiento de la colección, sin eliminarlo ni modificarlo. El resultado recomendado es `--solo-psd --mask-method acuarela --output-format both`, con salida a carpeta nueva. Revisar individualmente las máscaras en Krita y exportar por separado el TIFF de maquetación si la máscara ha sido retocada manualmente. Esta prueba no constituye una validación de Scribus, que no es requisito del proyecto.
 
 Las menciones anteriores a validaciones pendientes documentan hitos históricos; queda cerrada la comprobación inicial de Krita sobre la ilustración de prueba, no la revisión de las restantes ilustraciones.
+
+## Denominación del método definitivo
+
+El método seleccionado tras las comparaciones visuales se denomina **`acuarela`**. Es exactamente el algoritmo antes llamado `legacy`, sin cambios matemáticos ni cromáticos. La CLI acepta `legacy` como alias de compatibilidad, pero los ejemplos y el procedimiento de producción usan `--mask-method acuarela`. Los nombres históricos en resultados de diagnóstico se conservan para trazabilidad.
