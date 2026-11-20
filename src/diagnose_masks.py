@@ -13,6 +13,7 @@ from PIL import Image
 
 from extract_illustrations import extraer, leer
 from adaptive_mask import adaptive_alpha
+from legacy_plus_mask import propose_legacy_plus
 
 
 def to_u8(arr):
@@ -60,6 +61,7 @@ def diagnostics(rgb, regions=(), sigma=100, umbral=5.5, anchura=19):
     """Return images/report for comparison. Never writes original CMYK or TIFF."""
     _, legacy = extraer(rgb, sigma, umbral, anchura)
     adaptive = adaptive_alpha(rgb, sigma, umbral, anchura)
+    legacy_plus, addition = propose_legacy_plus(rgb, legacy)
     lab, reference, border = paper_reference(rgb)
     disagreement = legacy - adaptive
     h, w = legacy.shape
@@ -93,10 +95,13 @@ def diagnostics(rgb, regions=(), sigma=100, umbral=5.5, anchura=19):
         'original_srgb.png': to_u8(rgb),
         'legacy_alpha.png': to_u8(legacy),
         'adaptive_alpha.png': to_u8(adaptive),
+        'legacy_plus_alpha_experimental.png': to_u8(legacy_plus),
+        'legacy_plus_adicion_experimental.png': to_u8(addition),
         'diferencia_rojo_legacy_azul_adaptive.png': difference_rgb,
         'distancia_lab_papel.png': color_gray,
         'legacy_sobre_damero.png': composite(legacy),
         'adaptive_sobre_damero.png': composite(adaptive),
+        'legacy_plus_sobre_damero_experimental.png': composite(legacy_plus),
     }
     masks = {
         'papel_borde': border,
@@ -120,6 +125,8 @@ def diagnostics(rgb, regions=(), sigma=100, umbral=5.5, anchura=19):
         'lab_distance_scale_p99': round(scale, 2),
         'fraction_legacy_alpha_gt_005': round(float((legacy > .05).mean()), 5),
         'fraction_adaptive_alpha_gt_005': round(float((adaptive > .05).mean()), 5),
+        'fraction_legacy_plus_alpha_gt_005': round(float((legacy_plus > .05).mean()), 5),
+        'fraction_legacy_plus_added_alpha_mean': round(float(addition.mean()), 6),
         'regions': {
             key: describe(rgb, lab, reference, legacy, adaptive, mask)
             for key, mask in masks.items()
@@ -129,6 +136,7 @@ def diagnostics(rgb, regions=(), sigma=100, umbral=5.5, anchura=19):
             'Red means legacy alpha exceeds adaptive; blue means the opposite.',
             'Lab map is distance to border paper reference, not either method internal signal.',
             'Automatic regions are heuristics; they do not establish ground truth.',
+            'legacy_plus is diagnostic-only, uses raw local chroma and never decreases legacy alpha.',
         ],
     }
     return images, report
