@@ -77,9 +77,9 @@ python src/extract_illustrations.py "/ruta/escaneos" "/ruta/salida"
 python src/extract_illustrations.py "/ruta/escaneos" "/ruta/salida" --recursivo
 ```
 
-Admite JPG/JPEG y PSD CMYK de 8 bits con ICC. Exporta TIFF de 8 bits con cinco canales **CMYK + alfa no premultiplicado**, conservando **sin modificar** las cuatro muestras CMYK originales y el perfil ICC incrustado. Conserva dimensiones y, cuando se pueden leer, los ppp del original. La máscara PNG auxiliar solo se genera si se solicita con `--export-mask`. Para calcular alfa utiliza una conversión ICC a RGB **solo en memoria**.
+Admite JPG/JPEG, TIFF (`.tif` y `.tiff`) y PSD CMYK de 8 bits con ICC. Exporta TIFF de 8 bits con cinco canales **CMYK + alfa no premultiplicado**, conservando **sin modificar** las cuatro muestras CMYK originales y el perfil ICC incrustado. Conserva dimensiones y, cuando se pueden leer, los ppp del original. La máscara PNG auxiliar solo se genera si se solicita con `--export-mask`. Para calcular alfa utiliza una conversión ICC a RGB **solo en memoria**.
 
-El programa no sobrescribe archivos TIFF existentes. En caso de archivos homónimos como `23.psd` y `23.jpg`, genera `23_psd.tif` y `23_jpg.tif`. Con `--recursivo`, conserva las subcarpetas. Los errores quedan en `errores_procesamiento.txt`.
+Si no hay archivos con extensiones compatibles, el programa termina con un error explícito, en lugar de anunciar «Terminados: 0 archivos». El programa no sobrescribe archivos TIFF existentes. En caso de archivos homónimos como `23.psd` y `23.jpg`, genera `23_psd.tif` y `23_jpg.tif`. Con `--recursivo`, conserva las subcarpetas. Los errores quedan en `errores_procesamiento.txt`.
 
 ## Formatos de salida
 
