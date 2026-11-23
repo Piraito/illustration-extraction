@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Extracción experimental de ilustraciones escaneadas por lotes.
 
-Lee JPG/JPEG y PSD CMYK de 8 bits; conserva los cuatro canales CMYK,
+Lee JPG/JPEG, TIFF y PSD CMYK de 8 bits; conserva los cuatro canales CMYK,
 perfil ICC original, dimensiones y resolución. Añade un alfa no premultiplicado
 y exporta TIFF CMYK+A. El RGB temporal solo sirve para calcular la máscara.
 
@@ -25,7 +25,7 @@ import tifffile
 from PIL import Image, ImageOps, ImageCms
 from scipy.ndimage import gaussian_filter
 
-EXTS = {'.jpg', '.jpeg', '.psd'}
+EXTS = {'.jpg', '.jpeg', '.psd', '.tif', '.tiff'}
 
 
 def perfil_psd(path: Path) -> bytes:
@@ -180,6 +180,8 @@ def main():
         ap.error('Entrada y salida deben ser distintas')
     files = sorted(p for p in (args.entrada.rglob('*') if args.recursivo else args.entrada.iterdir())
                    if p.is_file() and p.suffix.lower() in EXTS)
+    if not files:
+        ap.error(f'No se encontraron archivos compatibles ({", ".join(sorted(EXTS))}) en {args.entrada}')
     args.salida.mkdir(parents=True, exist_ok=True)
     # Si 23.psd y 23.jpg coexisten, no deben generar ambos 23.tif.
     bases = Counter(str(p.relative_to(args.entrada).with_suffix('')).lower() for p in files)
