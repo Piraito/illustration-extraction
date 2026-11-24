@@ -53,6 +53,29 @@ class InputDiscoveryTests(unittest.TestCase):
             self.assertIn('[1/1] ERROR 46-34.tif', out.getvalue())
             self.assertTrue(output.exists())
 
+    def test_single_file_uses_shared_tiff_exporter_and_output_name(self):
+        with tempfile.TemporaryDirectory() as root:
+            base = Path(root)
+            incoming = base / '46-34.tif'
+            incoming.touch()
+            output = base / 'results'
+            import numpy as np
+            cmyk = np.zeros((3, 4, 4), dtype=np.uint8)
+            rgb = np.ones((3, 4, 3), dtype=np.float32)
+            alpha = np.ones((3, 4), dtype=np.float32)
+            with (patch.object(sys, 'argv', [
+                    'extract_illustrations.py', str(incoming), str(output)]),
+                  patch.object(extractor, 'leer',
+                               return_value=(cmyk, rgb, b'icc', (300, 300))),
+                  patch.object(extractor, 'extraer', return_value=(rgb, alpha)),
+                  patch.object(extractor, 'guardar_tiff') as writer,
+                  contextlib.redirect_stdout(io.StringIO()) as out):
+                extractor.main()
+            writer.assert_called_once()
+            self.assertEqual(writer.call_args.args[0], output / '46-34.tif')
+            np.testing.assert_array_equal(writer.call_args.args[2], alpha)
+            self.assertIn('[1/1] OK 46-34.tif', out.getvalue())
+
     def test_single_file_with_unsupported_extension_fails(self):
         with tempfile.TemporaryDirectory() as root:
             base = Path(root)
