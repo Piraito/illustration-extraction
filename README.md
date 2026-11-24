@@ -72,10 +72,24 @@ No hace falta activar el entorno si se usa `.venv/bin/python`. Para activarlo: `
 
 ## Uso
 
+El primer argumento puede ser **una imagen individual o una carpeta**. El segundo es siempre la carpeta de resultados.
+
 ```bash
-python src/extract_illustrations.py "/ruta/escaneos" "/ruta/salida"
-python src/extract_illustrations.py "/ruta/escaneos" "/ruta/salida" --recursivo
+# Una imagen, útil para comparar ajustes antes de procesar el lote
+.venv/bin/python src/extract_illustrations.py \
+  "../escaneadas-adsise/tiburones/46-34.tif" "../resultado-prueba" \
+  --mask-method acuarela --output-format tiff-alpha
+
+# Una carpeta completa (comportamiento habitual)
+.venv/bin/python src/extract_illustrations.py \
+  "/ruta/escaneos" "/ruta/salida"
+
+# Carpeta y subcarpetas
+.venv/bin/python src/extract_illustrations.py \
+  "/ruta/escaneos" "/ruta/salida" --recursivo
 ```
+
+Para la entrada individual, el nombre del TIFF de salida se deriva del archivo original (por ejemplo, `46-34.tif`). Se mantiene el comportamiento de no sobrescribir salidas existentes. La selección del archivo **no cambia el algoritmo ni los canales CMYK o el perfil ICC**.
 
 Admite JPG/JPEG, TIFF (`.tif` y `.tiff`) y PSD CMYK de 8 bits con ICC. Exporta TIFF de 8 bits con cinco canales **CMYK + alfa no premultiplicado**, conservando **sin modificar** las cuatro muestras CMYK originales y el perfil ICC incrustado. Conserva dimensiones y, cuando se pueden leer, los ppp del original. La máscara PNG auxiliar solo se genera si se solicita con `--export-mask`. Para calcular alfa utiliza una conversión ICC a RGB **solo en memoria**.
 
