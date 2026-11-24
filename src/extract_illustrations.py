@@ -174,20 +174,29 @@ def main():
     ap.add_argument('--umbral', type=float, default=5.5)
     ap.add_argument('--anchura', type=float, default=19)
     args = ap.parse_args()
-    if not args.entrada.is_dir():
-        ap.error('La carpeta de entrada no existe')
+    if not args.entrada.exists():
+        ap.error('La entrada no existe')
+    if not args.entrada.is_file() and not args.entrada.is_dir():
+        ap.error('La entrada debe ser un archivo o una carpeta')
     if args.entrada.resolve() == args.salida.resolve():
         ap.error('Entrada y salida deben ser distintas')
-    files = sorted(p for p in (args.entrada.rglob('*') if args.recursivo else args.entrada.iterdir())
-                   if p.is_file() and p.suffix.lower() in EXTS)
+    if args.entrada.is_file():
+        if args.entrada.suffix.lower() not in EXTS:
+            ap.error(f'Extensión de archivo no compatible: {args.entrada.suffix}')
+        files = [args.entrada]
+        base_dir = args.entrada.parent
+    else:
+        files = sorted(p for p in (args.entrada.rglob('*') if args.recursivo else args.entrada.iterdir())
+                       if p.is_file() and p.suffix.lower() in EXTS)
+        base_dir = args.entrada
     if not files:
         ap.error(f'No se encontraron archivos compatibles ({", ".join(sorted(EXTS))}) en {args.entrada}')
     args.salida.mkdir(parents=True, exist_ok=True)
     # Si 23.psd y 23.jpg coexisten, no deben generar ambos 23.tif.
-    bases = Counter(str(p.relative_to(args.entrada).with_suffix('')).lower() for p in files)
+    bases = Counter(str(p.relative_to(base_dir).with_suffix('')).lower() for p in files)
     errores = []
     for i, src in enumerate(files, 1):
-        rel = src.relative_to(args.entrada)
+        rel = src.relative_to(base_dir)
         base = rel.with_suffix('')
         if bases[str(base).lower()] > 1:
             base = base.with_name(base.name + '_' + src.suffix[1:].lower())
